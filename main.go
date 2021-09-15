@@ -12,45 +12,86 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 	"github.com/yosepalexsander/waysbucks-api/db"
+	"github.com/yosepalexsander/waysbucks-api/handler"
+	"github.com/yosepalexsander/waysbucks-api/storage"
 )
 
+type Env struct {
+	user handler.UserServer
+} 
 func main()  {
-	err := godotenv.Load()
-  if err != nil {
-    log.Fatal("Error loading .env file")
+  if err := godotenv.Load(); err != nil {
+    log.Println(err)
   }
 	
-	var dbEnv db.DB
-	db.Connect(&dbEnv)
-
+	var dbStore db.DBStore
+	db.Connect(&dbStore)
+	env := Env{
+		handler.UserServer{
+			Finder: storage.UserStorage{DB: dbStore.DB},
+			Saver: storage.UserStorage{DB: dbStore.DB},
+			Delete: storage.UserStorage{DB: dbStore.DB},
+	}}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
+	r.Use(cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+		},
+		AllowedHeaders: []string{"*"},
+		MaxAge: 300,
+	}).Handler)
 	r.Use(middleware.Logger)
-	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(middleware.Recoverer)
 
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Welcome"))
-		})
+		r.HandleFunc("/register", env.user.Register)
+		r.Post("/login", env.user.Login)
+
+		r.Get("/users", env.user.GetUsers)
+		r.Get("/user/{userID}", env.user.GetUser)
+		r.Delete("/user/{userID}", env.user.DeleteUser)
 	})
 	
-	server := http.Server{
+	server := &http.Server{
 		Addr: "0.0.0.0:8080", 
 		Handler: r,
+		WriteTimeout: time.Second * 15,
+		ReadTimeout:  time.Second * 15,
+		IdleTimeout:  time.Second * 30,
 	}
-	log.Printf("Server Started on: %s", server.Addr)
+	log.Printf("Server Started")
+
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
+	gracefullShutdown(server)
+}
+
+func gracefullShutdown(server *http.Server) {
 	serverCtx, serverStopCtx := context.WithCancel(context.Background())
 	
 	// Listen for syscall signals for process to interrupt
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	
 	go func() {
 		<- sig
-
+	
 		// Shutdown signal with grace period of 30 seconds
 		shutdownCtx, cancel := context.WithTimeout(serverCtx, 30*time.Second)
-		defer cancel()
+		defer func() {
+			signal.Stop(sig)
+			cancel()
+		}()
+
 		go func() {
 			<- shutdownCtx.Done()
 			if shutdownCtx.Err() == context.DeadlineExceeded {
@@ -62,17 +103,9 @@ func main()  {
 		err := server.Shutdown(shutdownCtx)
 		if err != nil {
 			log.Fatal(err)
-
 		}
-
-		log.Print("Server Stopped")
 		serverStopCtx()
 	}()
-
-	serverErr := server.ListenAndServe()
-	if serverErr != nil  && serverErr != http.ErrServerClosed{
-		log.Fatal(err)
-	}
 
 	// Wait for server context to be stopped
 	<- serverCtx.Done()
