@@ -52,12 +52,15 @@ func main()  {
 	r.Use(middleware.Recoverer)
 
 	r.Route("/api/v1", func(r chi.Router) {
-		r.HandleFunc("/register", env.user.Register)
+		r.Post("/register", env.user.Register)
 		r.Post("/login", env.user.Login)
 
-		r.Get("/users", env.user.GetUsers)
-		r.Get("/user/{userID}", env.user.GetUser)
-		r.Delete("/user/{userID}", env.user.DeleteUser)
+		r.Route("/users", func(r chi.Router) {
+			r.Use(handler.Authentication)
+			r.Get("/", env.user.GetUsers)
+			r.Get("/{userID}", env.user.GetUser)
+			r.Delete("/{userID}", env.user.DeleteUser)
+		})
 	})
 	
 	server := &http.Server{

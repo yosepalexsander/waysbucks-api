@@ -5,12 +5,19 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"reflect"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/locales/en"
+	ut "github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
 	"github.com/yosepalexsander/waysbucks-api/domain"
 	"github.com/yosepalexsander/waysbucks-api/storage"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -26,17 +33,16 @@ type CommonResponse struct {
 
 type (
 	Register_Req struct {
-		Name string `json:"name"`
-		Email string `json:"email"`
-		Password string `json:"password"`
-		Gender string `json:"gender"`
-		Phone string `json:"phone"`
+		Name string `json:"name" validate:"required"`
+		Email string `json:"email" validate:"required,email"`
+		Password string `json:"password" validate:"required,min=8,max=16"`
+		Gender string `json:"gender" validate:"required"`
+		Phone string `json:"phone" validate:"required"`
 		IsAdmin uint8
 	}
 	Register_Payload struct {
 		Name string `json:"name"`
 		Email string `json:"email"`
-		Token string `json:"token"`
 	}
 	Register_Res struct {
 		CommonResponse
@@ -71,11 +77,7 @@ func (s UserServer) GetUser(w http.ResponseWriter, r *http.Request)  {
 	user, err := s.Finder.FindUserById(r.Context(), userID)
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		resp, _ := json.Marshal(CommonResponse{
-			Message:  "error",
-		})
-		w.Write(resp)
+		notFound(w)
     return
 	}
 	res_body := struct{
@@ -93,26 +95,35 @@ func (s UserServer) GetUser(w http.ResponseWriter, r *http.Request)  {
 	w.Write(resp)
 }
 
-func (s UserServer) DeleteUser(w http.ResponseWriter, r *http.Request) {
+func (s *UserServer) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	userID, _ := strconv.ParseUint(chi.URLParam(r, "userID"), 10, 32)
+	claims, ok := ctx.Value(tokenCtxKey).(*MyClaims)
 
-	if err := s.Delete.DeleteUser(r.Context(), userID); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		resp, _ := json.Marshal(CommonResponse{
-			Message:  "error",
-		})
-		w.Write(resp)
+	if !ok {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+
+	if claims.UserID != userID {
+		forbidden(w)
+		return
+	}
+
+	if err := s.Delete.DeleteUser(ctx, userID); err != nil {
+		internalServerError(w)
     return
 	}
 	
 	resp, _ := json.Marshal(CommonResponse{
 		Message:  "resource successfully deleted",
 	})
+	
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
 }
 
-func (s UserServer) Register(w http.ResponseWriter, r *http.Request)  {
+func (s *UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 	var body Register_Req
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -120,20 +131,20 @@ func (s UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 	}
 
 	if user, _ := s.Finder.FindUserByEmail(r.Context(), body.Email); user.Email == body.Email {
-		w.WriteHeader(http.StatusBadRequest)
-		resp, _ := json.Marshal(CommonResponse{
-			Message: "resource already exist",
-		})
-		w.Write(resp)
+		badRequest(w, "resource already exist")
     return
 	}
-	bytes, err := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		resp, _ := json.Marshal(CommonResponse{
-			Message: "error",
-		})
-		w.Write(resp)
+
+	isValid, msg := validate(body)
+
+	if !isValid {
+		badRequest(w, msg)
+		return
+	}
+
+	bytes, encryptErr := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
+	if encryptErr != nil {
+		internalServerError(w)
     return
 	}
 	hashedPassword := string(bytes)
@@ -147,8 +158,7 @@ func (s UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 	}
 	
 	if err := s.Saver.SaveUser(r.Context(), newUser); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("database error"))
+		internalServerError(w)
 		return
 	}
 	response := Register_Res{
@@ -170,31 +180,31 @@ func (s UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 // If email not found in DB will return message error with code 404
 // If password is not match when compare with hashedPassword in DB
 // will return message error with code 400  
-func (s UserServer) Login(w http.ResponseWriter, r *http.Request)  {
+func (s *UserServer) Login(w http.ResponseWriter, r *http.Request)  {
 	var body Login_Req
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		badRequest(w, "request is not valid")
     return
 	}
 
 	user, findErr := s.Finder.FindUserByEmail(r.Context(), body.Email)
 
 	if findErr != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("error"))
+		notFound(w)
     return
 	}
 	hashedPassword := []byte(user.Password)
 	reqPassword := []byte(body.Password)
 	if err := bcrypt.CompareHashAndPassword(hashedPassword, reqPassword); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("credential is not valid"))
+		badRequest(w, "credential is not valid")
     return
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"owner_id": user.Id,
-		"exp": 18000,
-		"iss": "user auth",
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, MyClaims{
+		user.Id,
+		jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(time.Hour * 3).Unix(),
+			Issuer: "Waysbucks",
+		},
 	})
 
 	// Sign and get the complete encoded token as a string using the secret
@@ -219,4 +229,83 @@ func (s UserServer) Login(w http.ResponseWriter, r *http.Request)  {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
+}
+
+func internalServerError(w http.ResponseWriter)  {
+	w.WriteHeader(http.StatusInternalServerError)
+	resp, _ := json.Marshal(CommonResponse{
+		Message: "server error",
+	})
+	w.Write(resp)
+}
+
+func forbidden(w http.ResponseWriter)  {
+	w.WriteHeader(http.StatusForbidden)
+	resp, _ := json.Marshal(CommonResponse{
+		Message: "access denied",
+	})
+	w.Write(resp)
+}
+
+func notFound(w http.ResponseWriter)  {
+	resp, _ := json.Marshal(CommonResponse{
+		Message: "resource not found",
+	})
+	w.WriteHeader(http.StatusNotFound)
+	w.Write(resp)
+}
+
+func badRequest(w http.ResponseWriter, msg string)  {
+	resp, _ := json.Marshal(CommonResponse{
+		Message: msg,
+	})
+	w.WriteHeader(http.StatusBadRequest)
+	w.Write(resp)
+}
+
+func validate(value interface{}) (bool, string)  {
+	v := validator.New()
+	english := en.New()
+	uni := ut.New(english, english)
+	trans, _ := uni.GetTranslator("en")
+	addTranslation(v, trans, "email", "{0} must be a valid email")
+	addTranslation(v, trans, "min", "{0} must be at least {1} char length")
+	addTranslation(v, trans, "max", "{0} must be max {1} char length")
+	addTranslation(v, trans, "required", "{0} is a required field")
+	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		return name
+	})
+	err := v.Struct(value)
+	if err != nil {
+		validationErrors := err.(validator.ValidationErrors)
+		for _, err := range validationErrors {
+			log.Println(err.Error())
+		}
+		msgErr := validationErrors[0].Translate(trans)
+		return false, msgErr
+	}
+	return true, ""
+}
+
+func addTranslation(v *validator.Validate, trans ut.Translator, tag string, errMessage string) {
+	registerFn := func(ut ut.Translator) error {
+		 return ut.Add(tag, errMessage, false)
+	}
+
+	transFn := func(ut ut.Translator, fe validator.FieldError) string {
+		param := fe.Param()
+		 tag := fe.Tag()
+
+		 t, err := ut.T(tag, fe.Field(), param)
+		 if err != nil {
+				return fe.(error).Error()
+		 }
+		 return t
+	}
+
+	_ = v.RegisterTranslation(tag, trans, registerFn, transFn)
 }
