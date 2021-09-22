@@ -16,15 +16,15 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
 	"github.com/yosepalexsander/waysbucks-api/domain"
-	"github.com/yosepalexsander/waysbucks-api/storage"
+	"github.com/yosepalexsander/waysbucks-api/persistance"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserServer struct {
-	Finder storage.UserFinder
-	Saver storage.UserSaver
-	Delete storage.UserDelete
+	Finder persistance.UserFinder
+	Saver persistance.UserSaver
+	Remover persistance.UserRemover
 }
 
 type CommonResponse struct {
@@ -67,12 +67,12 @@ type (
 	}
 )
 
-func (s UserServer) GetUsers(w http.ResponseWriter, r *http.Request)  {
+func (s *UserServer) GetUsers(w http.ResponseWriter, r *http.Request)  {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Write([]byte("get all users"))
 }
 
-func (s UserServer) GetUser(w http.ResponseWriter, r *http.Request)  {
+func (s *UserServer) GetUser(w http.ResponseWriter, r *http.Request)  {
 	userID, _:= strconv.ParseUint(chi.URLParam(r, "userID"), 10, 32)
 	user, err := s.Finder.FindUserById(r.Context(), userID)
 
@@ -80,7 +80,7 @@ func (s UserServer) GetUser(w http.ResponseWriter, r *http.Request)  {
 		notFound(w)
     return
 	}
-	res_body := struct{
+	responseStruct := struct{
 		CommonResponse
 		Payload *domain.User `json:"payload"`
 	} {
@@ -89,10 +89,37 @@ func (s UserServer) GetUser(w http.ResponseWriter, r *http.Request)  {
 		},
 		Payload: user,
 	}
-	resp, _ := json.Marshal(res_body)
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write(resp)
+	resBody, _ := json.Marshal(responseStruct)
+	responseOK(w, resBody)
+}
+
+func (s *UserServer) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, _:= strconv.ParseUint(chi.URLParam(r, "userID"), 10, 32)
+	claims, ok := ctx.Value(tokenCtxKey).(*MyClaims)
+
+	if !ok {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	
+	if claims.UserID != userID {
+		forbidden(w)
+		return
+	}
+
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		badRequest(w, "request invalid")
+		return
+	}
+	
+	_, err := s.Saver.UpdateUser(ctx, claims.UserID, body)
+
+	if err != nil {
+		internalServerError(w)
+		return
+	}
 }
 
 func (s *UserServer) DeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -110,17 +137,15 @@ func (s *UserServer) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.Delete.DeleteUser(ctx, userID); err != nil {
+	if err := s.Remover.DeleteUser(ctx, userID); err != nil {
 		internalServerError(w)
     return
 	}
 	
-	resp, _ := json.Marshal(CommonResponse{
+	resBody, _ := json.Marshal(CommonResponse{
 		Message:  "resource successfully deleted",
 	})
-	
-	w.WriteHeader(http.StatusOK)
-	w.Write(resp)
+	responseOK(w, resBody)
 }
 
 func (s *UserServer) Register(w http.ResponseWriter, r *http.Request)  {
@@ -136,7 +161,6 @@ func (s *UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 	}
 
 	isValid, msg := validate(body)
-
 	if !isValid {
 		badRequest(w, msg)
 		return
@@ -147,6 +171,7 @@ func (s *UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 		internalServerError(w)
     return
 	}
+
 	hashedPassword := string(bytes)
 	newUser := domain.User{
 		Name: body.Name,
@@ -161,7 +186,7 @@ func (s *UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 		internalServerError(w)
 		return
 	}
-	response := Register_Res{
+	responseStruct := Register_Res{
 		CommonResponse: CommonResponse{
 			Message: "resource successfully created",
 		},
@@ -170,10 +195,8 @@ func (s *UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 			Email: body.Email,
 		},
 	}
-	resp, _ := json.Marshal(response)
-	w.Header().Add("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusCreated)
-	w.Write(resp)
+	resBody, _ := json.Marshal(responseStruct)
+	responseOK(w, resBody)
 }
 
 // Handle login from client
@@ -193,12 +216,14 @@ func (s *UserServer) Login(w http.ResponseWriter, r *http.Request)  {
 		notFound(w)
     return
 	}
+
 	hashedPassword := []byte(user.Password)
 	reqPassword := []byte(body.Password)
 	if err := bcrypt.CompareHashAndPassword(hashedPassword, reqPassword); err != nil {
 		badRequest(w, "credential is not valid")
     return
 	}
+	
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, MyClaims{
 		user.Id,
 		jwt.StandardClaims{
@@ -214,7 +239,7 @@ func (s *UserServer) Login(w http.ResponseWriter, r *http.Request)  {
 		log.Println(tokenErr)
 	}
 
-	response := Login_Res{
+	responseStruct := Login_Res{
 		CommonResponse: CommonResponse{
 			Message: "resource successfully created",
 		},
@@ -225,43 +250,10 @@ func (s *UserServer) Login(w http.ResponseWriter, r *http.Request)  {
 		},
 	}
 
-	resp, _ := json.Marshal(response)
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write(resp)
+	resBody, _ := json.Marshal(responseStruct)
+	responseOK(w, resBody)
 }
 
-func internalServerError(w http.ResponseWriter)  {
-	w.WriteHeader(http.StatusInternalServerError)
-	resp, _ := json.Marshal(CommonResponse{
-		Message: "server error",
-	})
-	w.Write(resp)
-}
-
-func forbidden(w http.ResponseWriter)  {
-	w.WriteHeader(http.StatusForbidden)
-	resp, _ := json.Marshal(CommonResponse{
-		Message: "access denied",
-	})
-	w.Write(resp)
-}
-
-func notFound(w http.ResponseWriter)  {
-	resp, _ := json.Marshal(CommonResponse{
-		Message: "resource not found",
-	})
-	w.WriteHeader(http.StatusNotFound)
-	w.Write(resp)
-}
-
-func badRequest(w http.ResponseWriter, msg string)  {
-	resp, _ := json.Marshal(CommonResponse{
-		Message: msg,
-	})
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write(resp)
-}
 
 func validate(value interface{}) (bool, string)  {
 	v := validator.New()
@@ -306,6 +298,5 @@ func addTranslation(v *validator.Validate, trans ut.Translator, tag string, errM
 		 }
 		 return t
 	}
-
 	_ = v.RegisterTranslation(tag, trans, registerFn, transFn)
 }

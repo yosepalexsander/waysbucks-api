@@ -11,28 +11,23 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/joho/godotenv"
 	"github.com/rs/cors"
 	"github.com/yosepalexsander/waysbucks-api/db"
 	"github.com/yosepalexsander/waysbucks-api/handler"
-	"github.com/yosepalexsander/waysbucks-api/storage"
+	"github.com/yosepalexsander/waysbucks-api/persistance"
 )
 
 type Env struct {
 	user handler.UserServer
 } 
 func main()  {
-  if err := godotenv.Load(); err != nil {
-    log.Println(err)
-  }
-	
 	var dbStore db.DBStore
 	db.Connect(&dbStore)
 	env := Env{
 		handler.UserServer{
-			Finder: storage.UserStorage{DB: dbStore.DB},
-			Saver: storage.UserStorage{DB: dbStore.DB},
-			Delete: storage.UserStorage{DB: dbStore.DB},
+			Finder: persistance.UserRepo{DB: dbStore.DB},
+			Saver: persistance.UserRepo{DB: dbStore.DB},
+			Remover: persistance.UserRepo{DB: dbStore.DB},
 	}}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -59,6 +54,7 @@ func main()  {
 			r.Use(handler.Authentication)
 			r.Get("/", env.user.GetUsers)
 			r.Get("/{userID}", env.user.GetUser)
+			r.Put("/{userID}", env.user.UpdateUser)
 			r.Delete("/{userID}", env.user.DeleteUser)
 		})
 	})

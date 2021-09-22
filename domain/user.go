@@ -7,6 +7,6 @@ type User struct {
 	Password string `db:"password" json:"password"`
 	Gender string `db:"gender" json:"gender"`
 	Phone string `db:"phone" json:"phone"`
-	Image *string `db:"image" json:"image"`
+	Image string `db:"image" json:"image"`
 	IsAdmin uint8 `db:"is_admin" json:"is_admin"`
 }

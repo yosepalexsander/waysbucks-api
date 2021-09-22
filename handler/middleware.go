@@ -30,7 +30,7 @@ func Authentication(next http.Handler) http.Handler {
 		bearerSplits := strings.Fields(authValue);
 
 		if (len(bearerSplits) != 2 || bearerSplits[0] != "Bearer") {
-			w.WriteHeader(http.StatusBadRequest)
+			badRequest(w, "Authorization header value is invalid")
 			return
 		}
 
@@ -43,7 +43,7 @@ func Authentication(next http.Handler) http.Handler {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			w.WriteHeader(http.StatusBadRequest)
+			badRequest(w, "token is invalid anymore")
 			return
 		}
 		
