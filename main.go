@@ -14,21 +14,27 @@ import (
 	"github.com/rs/cors"
 	"github.com/yosepalexsander/waysbucks-api/db"
 	"github.com/yosepalexsander/waysbucks-api/handler"
+	customMiddleware "github.com/yosepalexsander/waysbucks-api/handler/middleware"
 	"github.com/yosepalexsander/waysbucks-api/persistance"
 )
 
 type Env struct {
 	user handler.UserServer
+	address handler.AddressServer
 } 
+
 func main()  {
 	var dbStore db.DBStore
 	db.Connect(&dbStore)
 	env := Env{
-		handler.UserServer{
-			Finder: persistance.UserRepo{DB: dbStore.DB},
-			Saver: persistance.UserRepo{DB: dbStore.DB},
-			Remover: persistance.UserRepo{DB: dbStore.DB},
-	}}
+		user: handler.UserServer{
+			Repo: persistance.UserRepo{DB: dbStore.DB},
+		},
+		address: handler.AddressServer{
+			Repo: persistance.AddressRepo{DB: dbStore.DB},
+		},
+	}
+
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(cors.New(cors.Options{
@@ -51,19 +57,27 @@ func main()  {
 		r.Post("/login", env.user.Login)
 
 		r.Route("/users", func(r chi.Router) {
-			r.Use(handler.Authentication)
+			r.Use(customMiddleware.Authentication)
 			r.Get("/", env.user.GetUsers)
 			r.Get("/{userID}", env.user.GetUser)
 			r.Put("/{userID}", env.user.UpdateUser)
 			r.Delete("/{userID}", env.user.DeleteUser)
 		})
+		r.Route("/address", func(r chi.Router) {
+			r.Use(customMiddleware.Authentication)
+			r.Get("/", env.address.GetUserAddress)
+			r.Post("/", env.address.CreateUserAddress)
+			r.Put("/{addressID}", env.address.UpdateUserAddress)
+			r.Delete("/{addressID}", env.address.DeleteAddress)
+		})
+
 	})
 	
 	server := &http.Server{
 		Addr: "0.0.0.0:8080", 
 		Handler: r,
+		ReadTimeout:  time.Second * 10,
 		WriteTimeout: time.Second * 15,
-		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 30,
 	}
 	log.Printf("Server Started")

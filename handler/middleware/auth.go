@@ -1,4 +1,4 @@
-package handler
+package middleware
 
 import (
 	"context"
@@ -12,11 +12,11 @@ import (
 type contextKey string
 
 type MyClaims struct {
-	UserID uint64 
+	UserID int 
 	jwt.StandardClaims
 }
 
-const tokenCtxKey = contextKey("tokenPayload")
+const TokenCtxKey = contextKey("tokenPayload")
 
 func Authentication(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +30,8 @@ func Authentication(next http.Handler) http.Handler {
 		bearerSplits := strings.Fields(authValue);
 
 		if (len(bearerSplits) != 2 || bearerSplits[0] != "Bearer") {
-			badRequest(w, "Authorization header value is invalid")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Authorization header is invalid"))
 			return
 		}
 
@@ -43,7 +44,8 @@ func Authentication(next http.Handler) http.Handler {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			badRequest(w, "token is invalid anymore")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("token is not valid anymore"))
 			return
 		}
 		
@@ -52,8 +54,8 @@ func Authentication(next http.Handler) http.Handler {
 			return
 		}
 
-		claims := token.Claims.(*MyClaims)
-		ctx := context.WithValue(r.Context(), tokenCtxKey, claims)
+		claims := token.Claims
+		ctx := context.WithValue(r.Context(), TokenCtxKey, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

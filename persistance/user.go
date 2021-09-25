@@ -6,29 +6,23 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
-	"github.com/yosepalexsander/waysbucks-api/domain"
+	"github.com/yosepalexsander/waysbucks-api/entity"
 )
 
 type UserRepo struct {
 	DB *sqlx.DB
 }
 
-type (
-	UserFinder interface {
-		FindUserById(ctx context.Context, id uint64) (*domain.User, error)
-		FindUserByEmail(ctx context.Context, email string) (*domain.User, error)
-	}
-	UserSaver interface {
-		SaveUser(ctx context.Context, user domain.User) error
-		UpdateUser(ctx context.Context,id uint64, newData map[string]interface{}) (*domain.User, error)
-	}
-	UserRemover interface {
-		DeleteUser(ctx context.Context, id uint64) error
-	}
-)
+type UserRepository interface {
+	FindUserById(ctx context.Context, id int) (*entity.User, error)
+	FindUserByEmail(ctx context.Context, email string) (*entity.User, error)
+	SaveUser(ctx context.Context, user entity.User) error
+	UpdateUser(ctx context.Context,id int, newData map[string]interface{}) (error)
+	DeleteUser(ctx context.Context, id int) error
+}
 
-func (storage UserRepo) FindUserById(ctx context.Context, id uint64) (*domain.User, error) {
-	var user domain.User
+func (storage UserRepo) FindUserById(ctx context.Context, id int) (*entity.User, error) {
+	var user entity.User
 	
 	sql, _, _ := sq.
 	Select("id", "name", "email", "gender", "phone", "image", "is_admin").
@@ -43,8 +37,8 @@ func (storage UserRepo) FindUserById(ctx context.Context, id uint64) (*domain.Us
 	return &user, nil
 }
 
-func (storage UserRepo) FindUserByEmail(ctx context.Context, email string) (*domain.User, error) {
-	var user domain.User
+func (storage UserRepo) FindUserByEmail(ctx context.Context, email string) (*entity.User, error) {
+	var user entity.User
 	
 	sql, _, _ := sq.
 	Select("id", "name", "email", "password", "gender", "phone", "image", "is_admin").
@@ -59,7 +53,7 @@ func (storage UserRepo) FindUserByEmail(ctx context.Context, email string) (*dom
 	return &user, nil
 }
 
-func (storage UserRepo) SaveUser(ctx context.Context, user domain.User) error {
+func (storage UserRepo) SaveUser(ctx context.Context, user entity.User) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.
 	Insert("users").
@@ -71,10 +65,11 @@ func (storage UserRepo) SaveUser(ctx context.Context, user domain.User) error {
 		log.Println(err)
 		return err
 	}
+	
 	return nil
 }
 
-func (storage UserRepo) UpdateUser(ctx context.Context, id uint64, newData map[string]interface{}) (*domain.User, error) {
+func (storage UserRepo) UpdateUser(ctx context.Context, id int, newData map[string]interface{}) error {
 
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.
@@ -84,13 +79,13 @@ func (storage UserRepo) UpdateUser(ctx context.Context, id uint64, newData map[s
 	_, err := storage.DB.ExecContext(ctx, sql, args...)
 
 	if err != nil {
-		log.Println(err)
-		return nil, err
+		return err
 	}
-	return nil, nil
+
+	return nil
 }
 
-func (storage UserRepo) DeleteUser(ctx context.Context, id uint64) error {
+func (storage UserRepo) DeleteUser(ctx context.Context, id int) error {
 	sql, _, _ := sq.
 	Delete("users").Where("id=$1").ToSql()
 	_, err := storage.DB.ExecContext(ctx, sql, id)

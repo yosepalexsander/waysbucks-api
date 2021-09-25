@@ -5,26 +5,21 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-playground/locales/en"
-	ut "github.com/go-playground/universal-translator"
-	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
-	"github.com/yosepalexsander/waysbucks-api/domain"
+	"github.com/yosepalexsander/waysbucks-api/entity"
+	"github.com/yosepalexsander/waysbucks-api/handler/middleware"
+	"github.com/yosepalexsander/waysbucks-api/helper"
 	"github.com/yosepalexsander/waysbucks-api/persistance"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserServer struct {
-	Finder persistance.UserFinder
-	Saver persistance.UserSaver
-	Remover persistance.UserRemover
+	Repo persistance.UserRepository
 }
 
 type CommonResponse struct {
@@ -73,8 +68,8 @@ func (s *UserServer) GetUsers(w http.ResponseWriter, r *http.Request)  {
 }
 
 func (s *UserServer) GetUser(w http.ResponseWriter, r *http.Request)  {
-	userID, _:= strconv.ParseUint(chi.URLParam(r, "userID"), 10, 32)
-	user, err := s.Finder.FindUserById(r.Context(), userID)
+	userID, _:= strconv.Atoi(chi.URLParam(r, "userID"))
+	user, err := s.Repo.FindUserById(r.Context(), userID)
 
 	if err != nil {
 		notFound(w)
@@ -82,7 +77,7 @@ func (s *UserServer) GetUser(w http.ResponseWriter, r *http.Request)  {
 	}
 	responseStruct := struct{
 		CommonResponse
-		Payload *domain.User `json:"payload"`
+		Payload *entity.User `json:"payload"`
 	} {
 		CommonResponse: CommonResponse{
 			Message: "resource has successfully get",
@@ -95,16 +90,15 @@ func (s *UserServer) GetUser(w http.ResponseWriter, r *http.Request)  {
 
 func (s *UserServer) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, _:= strconv.ParseUint(chi.URLParam(r, "userID"), 10, 32)
-	claims, ok := ctx.Value(tokenCtxKey).(*MyClaims)
+	userID, _:= strconv.Atoi(chi.URLParam(r, "userID"))
 
-	if !ok {
+	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*middleware.MyClaims); ok {
+		if claims.UserID != userID {
+			forbidden(w)
+			return
+		}
+	} else {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-	
-	if claims.UserID != userID {
-		forbidden(w)
 		return
 	}
 
@@ -113,31 +107,33 @@ func (s *UserServer) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		badRequest(w, "request invalid")
 		return
 	}
-	
-	_, err := s.Saver.UpdateUser(ctx, claims.UserID, body)
 
-	if err != nil {
+	if err := s.Repo.UpdateUser(ctx, userID, body); err != nil {
 		internalServerError(w)
 		return
 	}
+
+	resp, _ := json.Marshal(CommonResponse{
+		Message: "resource successfully updated",
+	})
+	responseOK(w, resp)
 }
 
 func (s *UserServer) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, _ := strconv.ParseUint(chi.URLParam(r, "userID"), 10, 32)
-	claims, ok := ctx.Value(tokenCtxKey).(*MyClaims)
-
-	if !ok {
+	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
+	
+	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*middleware.MyClaims); ok {
+		if claims.UserID != userID {
+			forbidden(w)
+			return
+		}
+	} else {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
 
-	if claims.UserID != userID {
-		forbidden(w)
-		return
-	}
-
-	if err := s.Remover.DeleteUser(ctx, userID); err != nil {
+	if err := s.Repo.DeleteUser(ctx, userID); err != nil {
 		internalServerError(w)
     return
 	}
@@ -151,16 +147,16 @@ func (s *UserServer) DeleteUser(w http.ResponseWriter, r *http.Request) {
 func (s *UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 	var body Register_Req
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		badRequest(w, "invalid request")
     return
 	}
 
-	if user, _ := s.Finder.FindUserByEmail(r.Context(), body.Email); user.Email == body.Email {
+	if user, _ := s.Repo.FindUserByEmail(r.Context(), body.Email); user.Email == body.Email {
 		badRequest(w, "resource already exist")
     return
 	}
 
-	isValid, msg := validate(body)
+	isValid, msg := helper.Validate(body)
 	if !isValid {
 		badRequest(w, msg)
 		return
@@ -173,7 +169,7 @@ func (s *UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 	}
 
 	hashedPassword := string(bytes)
-	newUser := domain.User{
+	newUser := entity.User{
 		Name: body.Name,
 		Email: body.Email,
 		Password: hashedPassword,
@@ -182,7 +178,7 @@ func (s *UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 		IsAdmin: body.IsAdmin,
 	}
 	
-	if err := s.Saver.SaveUser(r.Context(), newUser); err != nil {
+	if err := s.Repo.SaveUser(r.Context(), newUser); err != nil {
 		internalServerError(w)
 		return
 	}
@@ -210,9 +206,9 @@ func (s *UserServer) Login(w http.ResponseWriter, r *http.Request)  {
     return
 	}
 
-	user, findErr := s.Finder.FindUserByEmail(r.Context(), body.Email)
+	user, Repor := s.Repo.FindUserByEmail(r.Context(), body.Email)
 
-	if findErr != nil {
+	if Repor != nil {
 		notFound(w)
     return
 	}
@@ -223,16 +219,15 @@ func (s *UserServer) Login(w http.ResponseWriter, r *http.Request)  {
 		badRequest(w, "credential is not valid")
     return
 	}
-	
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, MyClaims{
-		user.Id,
-		jwt.StandardClaims{
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, middleware.MyClaims{
+		UserID: user.Id,
+		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 3).Unix(),
 			Issuer: "Waysbucks",
 		},
 	})
 
-	// Sign and get the complete encoded token as a string using the secret
 	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
 	tokenString, tokenErr := token.SignedString(secretKey)
 	if tokenErr != nil {
@@ -252,51 +247,4 @@ func (s *UserServer) Login(w http.ResponseWriter, r *http.Request)  {
 
 	resBody, _ := json.Marshal(responseStruct)
 	responseOK(w, resBody)
-}
-
-
-func validate(value interface{}) (bool, string)  {
-	v := validator.New()
-	english := en.New()
-	uni := ut.New(english, english)
-	trans, _ := uni.GetTranslator("en")
-	addTranslation(v, trans, "email", "{0} must be a valid email")
-	addTranslation(v, trans, "min", "{0} must be at least {1} char length")
-	addTranslation(v, trans, "max", "{0} must be max {1} char length")
-	addTranslation(v, trans, "required", "{0} is a required field")
-	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
-		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
-		if name == "-" {
-			return ""
-		}
-		return name
-	})
-	err := v.Struct(value)
-	if err != nil {
-		validationErrors := err.(validator.ValidationErrors)
-		for _, err := range validationErrors {
-			log.Println(err.Error())
-		}
-		msgErr := validationErrors[0].Translate(trans)
-		return false, msgErr
-	}
-	return true, ""
-}
-
-func addTranslation(v *validator.Validate, trans ut.Translator, tag string, errMessage string) {
-	registerFn := func(ut ut.Translator) error {
-		 return ut.Add(tag, errMessage, false)
-	}
-
-	transFn := func(ut ut.Translator, fe validator.FieldError) string {
-		param := fe.Param()
-		 tag := fe.Tag()
-
-		 t, err := ut.T(tag, fe.Field(), param)
-		 if err != nil {
-				return fe.(error).Error()
-		 }
-		 return t
-	}
-	_ = v.RegisterTranslation(tag, trans, registerFn, transFn)
 }
