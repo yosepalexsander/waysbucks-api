@@ -8,7 +8,7 @@ type User struct {
 	Gender string `db:"gender" json:"gender"`
 	Phone string `db:"phone" json:"phone"`
 	Image string `db:"image" json:"image"`
-	IsAdmin uint8 `db:"is_admin" json:"is_admin"`
+	IsAdmin bool `db:"is_admin" json:"is_admin"`
 }
 
 type UserAddress struct {

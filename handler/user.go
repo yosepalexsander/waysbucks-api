@@ -33,7 +33,7 @@ type (
 		Password string `json:"password" validate:"required,min=8,max=16"`
 		Gender string `json:"gender" validate:"required"`
 		Phone string `json:"phone" validate:"required"`
-		IsAdmin uint8
+		IsAdmin bool `json:"is_admin"`
 	}
 	Register_Payload struct {
 		Name string `json:"name"`
@@ -202,13 +202,13 @@ func (s *UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 func (s *UserServer) Login(w http.ResponseWriter, r *http.Request)  {
 	var body Login_Req
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		badRequest(w, "request is not valid")
+		badRequest(w, "invalid request")
     return
 	}
+	log.Println(body)
+	user, err := s.Repo.FindUserByEmail(r.Context(), body.Email)
 
-	user, Repor := s.Repo.FindUserByEmail(r.Context(), body.Email)
-
-	if Repor != nil {
+	if err != nil {
 		notFound(w)
     return
 	}
@@ -236,7 +236,7 @@ func (s *UserServer) Login(w http.ResponseWriter, r *http.Request)  {
 
 	responseStruct := Login_Res{
 		CommonResponse: CommonResponse{
-			Message: "resource successfully created",
+			Message: "login success",
 		},
 		Payload: Login_Payload{
 			Name: user.Name,

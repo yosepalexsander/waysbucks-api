@@ -44,9 +44,8 @@ func (storage UserRepo) FindUserByEmail(ctx context.Context, email string) (*ent
 	Select("id", "name", "email", "password", "gender", "phone", "image", "is_admin").
 	From("users").Where("email=$1").ToSql()
 	err := storage.DB.QueryRowxContext(ctx, sql, email).StructScan(&user)
-
+	
 	if err != nil {
-		log.Println(err)
 		return &user, err
 	}
 	
@@ -91,7 +90,6 @@ func (storage UserRepo) DeleteUser(ctx context.Context, id int) error {
 	_, err := storage.DB.ExecContext(ctx, sql, id)
 	
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 	

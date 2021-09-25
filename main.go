@@ -65,9 +65,9 @@ func main()  {
 		})
 		r.Route("/address", func(r chi.Router) {
 			r.Use(customMiddleware.Authentication)
-			r.Get("/", env.address.GetUserAddress)
-			r.Post("/", env.address.CreateUserAddress)
-			r.Put("/{addressID}", env.address.UpdateUserAddress)
+			r.Get("/", env.address.GetAddress)
+			r.Post("/", env.address.CreateAddress)
+			r.Put("/{addressID}", env.address.UpdateAddress)
 			r.Delete("/{addressID}", env.address.DeleteAddress)
 		})
 
