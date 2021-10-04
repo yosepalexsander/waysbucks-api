@@ -31,6 +31,7 @@ CREATE TABLE products (
   description VARCHAR(800) NOT NULL,
   image VARCHAR(255) NOT NULL,
   price INT NOT NULL,
+  is_available BOOLEAN NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -40,7 +41,7 @@ CREATE TABLE toppings (
   name VARCHAR(100) NOT NULL,
   image VARCHAR(255) NOT NULL,
   price INT NOT NULL,
-  isAvailable BOOLEAN NOT NULL,
+  is_available BOOLEAN NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -99,4 +100,17 @@ CREATE TABLE order_topping (
   CONSTRAINT fk_topping FOREIGN KEY(topping_id) REFERENCES toppings(id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
+CREATE OR REPLACE FUNCTION change_update_at_column() RETURNS TRIGGER AS $$
+BEGIN 
+  NEW."created_at" = OLD."created_at"; 
+  NEW."updated_at" = NOW();
+RETURN NEW;
+END;
+$$ LANGUAGE PLPGSQL;
+
+CREATE TRIGGER trigger_product_update BEFORE UPDATE ON products EXECUTE PROCEDURE change_update_at_column();
+CREATE TRIGGER trigger_user_update BEFORE UPDATE ON users EXECUTE PROCEDURE change_update_at_column();
+CREATE TRIGGER trigger_address_update BEFORE UPDATE ON user_address EXECUTE PROCEDURE change_update_at_column();
+CREATE TRIGGER trigger_topping_update BEFORE UPDATE ON toppings EXECUTE PROCEDURE change_update_at_column();
+CREATE TRIGGER trigger_transaction_update BEFORE UPDATE ON transactions EXECUTE PROCEDURE change_update_at_column();
 

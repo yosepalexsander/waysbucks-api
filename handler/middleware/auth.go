@@ -3,18 +3,13 @@ package middleware
 import (
 	"context"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/yosepalexsander/waysbucks-api/helper"
 )
 
 type contextKey string
-
-type MyClaims struct {
-	UserID int 
-	jwt.StandardClaims
-}
 
 const TokenCtxKey = contextKey("tokenPayload")
 
@@ -23,34 +18,30 @@ func Authentication(next http.Handler) http.Handler {
 		authValue := strings.TrimSpace(r.Header.Get("Authorization"))
 
 		if (len(authValue) == 0) {
-			w.WriteHeader(http.StatusUnauthorized)
+			http.Error(w, "Authorization header is invalid", http.StatusBadRequest)
 			return
 		}
 
 		bearerSplits := strings.Fields(authValue);
 
 		if (len(bearerSplits) != 2 || bearerSplits[0] != "Bearer") {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Authorization header is invalid"))
+			http.Error(w, "Authorization header is invalid", http.StatusBadRequest)
 			return
 		}
 
-		token, err := jwt.ParseWithClaims(bearerSplits[1], &MyClaims{}, func(token *jwt.Token) (interface{}, error) {
-			return []byte(os.Getenv("JWT_SECRET_KEY")), nil
-		})
+		token, err := helper.VerifyToken(bearerSplits[1])
 
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
-				w.WriteHeader(http.StatusUnauthorized)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("token is not valid anymore"))
+			http.Error(w, "token is not valid anymore", http.StatusBadRequest)
 			return
 		}
 		
 		if !token.Valid {
-			w.WriteHeader(http.StatusUnauthorized)
+			http.Error(w, "token is not valid anymore", http.StatusBadRequest)
 			return
 		}
 

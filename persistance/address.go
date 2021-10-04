@@ -14,14 +14,6 @@ type AddressRepo struct {
 	DB *sqlx.DB
 }
 
-type AddressRepository interface {
-	FindUserAddress(ctx context.Context, userID int) (*[]entity.UserAddress, error)
-	FindAddress(ctx context.Context, id int) (*entity.UserAddress, error)
-	SaveAddress(ctx context.Context, address entity.UserAddress) error
-	UpdateAddress(ctx context.Context, id int, address map[string]interface{}) error
-	DeleteAddress(ctx context.Context, id int, userID int) error
-}
-
 func (storage AddressRepo) SaveAddress(ctx context.Context, address entity.UserAddress) error  {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.
@@ -47,7 +39,6 @@ func (storage AddressRepo) FindUserAddress(ctx context.Context, userID int) (*[]
 	rows, err := storage.DB.QueryxContext(ctx, sql, userID)
 
 	if err != nil {
-		log.Println(err)
 		return nil, err
 	}
 

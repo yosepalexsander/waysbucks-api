@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,27 +14,16 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
 	"github.com/yosepalexsander/waysbucks-api/db"
-	"github.com/yosepalexsander/waysbucks-api/handler"
-	customMiddleware "github.com/yosepalexsander/waysbucks-api/handler/middleware"
-	"github.com/yosepalexsander/waysbucks-api/persistance"
+	"github.com/yosepalexsander/waysbucks-api/interactor"
+	"github.com/yosepalexsander/waysbucks-api/router"
 )
-
-type Env struct {
-	user handler.UserServer
-	address handler.AddressServer
-} 
 
 func main()  {
 	var dbStore db.DBStore
 	db.Connect(&dbStore)
-	env := Env{
-		user: handler.UserServer{
-			Repo: persistance.UserRepo{DB: dbStore.DB},
-		},
-		address: handler.AddressServer{
-			Repo: persistance.AddressRepo{DB: dbStore.DB},
-		},
-	}
+	interactor := interactor.Interactor{DB: dbStore.DB}
+	appHandler := interactor.NewAppHandler()
+
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -51,40 +41,27 @@ func main()  {
 	}).Handler)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Post("/register", env.user.Register)
-		r.Post("/login", env.user.Login)
-
-		r.Route("/users", func(r chi.Router) {
-			r.Use(customMiddleware.Authentication)
-			r.Get("/", env.user.GetUsers)
-			r.Get("/{userID}", env.user.GetUser)
-			r.Put("/{userID}", env.user.UpdateUser)
-			r.Delete("/{userID}", env.user.DeleteUser)
-		})
-		r.Route("/address", func(r chi.Router) {
-			r.Use(customMiddleware.Authentication)
-			r.Get("/", env.address.GetAddress)
-			r.Post("/", env.address.CreateAddress)
-			r.Put("/{addressID}", env.address.UpdateAddress)
-			r.Delete("/{addressID}", env.address.DeleteAddress)
-		})
-
-	})
+	r.HandleFunc("/debug/pprof/", pprof.Index)
+	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	router.NewRouter(r, appHandler)
 	
 	server := &http.Server{
-		Addr: "0.0.0.0:8080", 
+		Addr: "127.0.0.1:8080", 
 		Handler: r,
 		ReadTimeout:  time.Second * 10,
-		WriteTimeout: time.Second * 15,
-		IdleTimeout:  time.Second * 30,
+		WriteTimeout: time.Second * 40,
+		IdleTimeout:  time.Second * 40,
 	}
 	log.Printf("Server Started")
-
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
-	}
+	
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	}()
 	gracefullShutdown(server)
 }
 

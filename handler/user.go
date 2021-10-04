@@ -4,26 +4,26 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
-	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/golang-jwt/jwt"
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/handler/middleware"
 	"github.com/yosepalexsander/waysbucks-api/helper"
-	"github.com/yosepalexsander/waysbucks-api/persistance"
-
-	"golang.org/x/crypto/bcrypt"
+	"github.com/yosepalexsander/waysbucks-api/usecase"
 )
 
-type UserServer struct {
-	Repo persistance.UserRepository
-}
+// type UserHandler interface {
+// 	GetUsers(w http.ResponseWriter, r *http.Request)
+// 	GetUser(w http.ResponseWriter, r *http.Request)
+// 	UpdateUser(w http.ResponseWriter, r *http.Request)
+// 	DeleteUser(w http.ResponseWriter, r *http.Request)
+// 	Register(w http.ResponseWriter, r *http.Request)
+// 	Login(w http.ResponseWriter, r *http.Request)
+// }
 
-type CommonResponse struct {
-	Message string `json:"message"`
+type UserHandler struct {
+	UserUseCase usecase.UserUseCase
 }
 
 type (
@@ -62,14 +62,14 @@ type (
 	}
 )
 
-func (s *UserServer) GetUsers(w http.ResponseWriter, r *http.Request)  {
+func (s *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request)  {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Write([]byte("get all users"))
 }
 
-func (s *UserServer) GetUser(w http.ResponseWriter, r *http.Request)  {
+func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request)  {
 	userID, _:= strconv.Atoi(chi.URLParam(r, "userID"))
-	user, err := s.Repo.FindUserById(r.Context(), userID)
+	user, err := s.UserUseCase.FindUserById(r.Context(), userID)
 
 	if err != nil {
 		notFound(w)
@@ -88,11 +88,11 @@ func (s *UserServer) GetUser(w http.ResponseWriter, r *http.Request)  {
 	responseOK(w, resBody)
 }
 
-func (s *UserServer) UpdateUser(w http.ResponseWriter, r *http.Request) {
+func (s *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID, _:= strconv.Atoi(chi.URLParam(r, "userID"))
 
-	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*middleware.MyClaims); ok {
+	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
 		if claims.UserID != userID {
 			forbidden(w)
 			return
@@ -108,7 +108,7 @@ func (s *UserServer) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.Repo.UpdateUser(ctx, userID, body); err != nil {
+	if err := s.UserUseCase.UpdateUser(ctx, userID, body); err != nil {
 		internalServerError(w)
 		return
 	}
@@ -119,11 +119,11 @@ func (s *UserServer) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	responseOK(w, resp)
 }
 
-func (s *UserServer) DeleteUser(w http.ResponseWriter, r *http.Request) {
+func (s *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
 	
-	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*middleware.MyClaims); ok {
+	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
 		if claims.UserID != userID {
 			forbidden(w)
 			return
@@ -133,7 +133,7 @@ func (s *UserServer) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.Repo.DeleteUser(ctx, userID); err != nil {
+	if err := s.UserUseCase.DeleteUser(ctx, userID); err != nil {
 		internalServerError(w)
     return
 	}
@@ -144,41 +144,42 @@ func (s *UserServer) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	responseOK(w, resBody)
 }
 
-func (s *UserServer) Register(w http.ResponseWriter, r *http.Request)  {
+func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request)  {
+	ctx := r.Context()
 	var body Register_Req
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
     return
 	}
-
-	if user, _ := s.Repo.FindUserByEmail(r.Context(), body.Email); user.Email == body.Email {
-		badRequest(w, "resource already exist")
-    return
-	}
-
+	
 	isValid, msg := helper.Validate(body)
 	if !isValid {
 		badRequest(w, msg)
 		return
 	}
 
-	bytes, encryptErr := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
-	if encryptErr != nil {
-		internalServerError(w)
+	if user, _ := s.UserUseCase.FindUserByEmail(ctx, body.Email); user.Email == body.Email {
+		badRequest(w, "resource already exist")
     return
 	}
 
-	hashedPassword := string(bytes)
+	// bytes, encryptErr := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
+	// if encryptErr != nil {
+	// 	internalServerError(w)
+  //   return
+	// }
+
+	// hashedPassword := string(bytes)
 	newUser := entity.User{
 		Name: body.Name,
 		Email: body.Email,
-		Password: hashedPassword,
+		Password: body.Password,
 		Gender: body.Gender,
 		Phone: body.Phone,
 		IsAdmin: body.IsAdmin,
 	}
 	
-	if err := s.Repo.SaveUser(r.Context(), newUser); err != nil {
+	if err := s.UserUseCase.CreateNewUser(ctx, newUser); err != nil {
 		internalServerError(w)
 		return
 	}
@@ -199,39 +200,40 @@ func (s *UserServer) Register(w http.ResponseWriter, r *http.Request)  {
 // If email not found in DB will return message error with code 404
 // If password is not match when compare with hashedPassword in DB
 // will return message error with code 400  
-func (s *UserServer) Login(w http.ResponseWriter, r *http.Request)  {
+func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request)  {
 	var body Login_Req
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
     return
 	}
-	log.Println(body)
-	user, err := s.Repo.FindUserByEmail(r.Context(), body.Email)
+	
+	user, err := s.UserUseCase.FindUserByEmail(r.Context(), body.Email)
 
 	if err != nil {
 		notFound(w)
     return
 	}
-
-	hashedPassword := []byte(user.Password)
-	reqPassword := []byte(body.Password)
-	if err := bcrypt.CompareHashAndPassword(hashedPassword, reqPassword); err != nil {
+	
+	if err := s.UserUseCase.ValidatePassword(user.Password, body.Password); err != nil {
+		log.Println(err)
 		badRequest(w, "credential is not valid")
     return
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, middleware.MyClaims{
-		UserID: user.Id,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 3).Unix(),
-			Issuer: "Waysbucks",
-		},
-	})
+	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, helper.MyClaims{
+	// 	UserID: user.Id,
+	// 	IsAdmin: user.IsAdmin,
+	// 	StandardClaims: jwt.StandardClaims{
+	// 		ExpiresAt: time.Now().Add(time.Hour * 3).Unix(),
+	// 		Issuer: "Waysbucks",
+	// 	},
+	// })
 
-	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
-	tokenString, tokenErr := token.SignedString(secretKey)
+	// secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
+	tokenString, tokenErr := helper.GenerateToken(user)
 	if tokenErr != nil {
 		log.Println(tokenErr)
+		return
 	}
 
 	responseStruct := Login_Res{

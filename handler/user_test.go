@@ -18,11 +18,11 @@ func TestLogin(t *testing.T) {
 
 	reqStruct := []Login_Req{
 		{
-			Email: "test14@gmail.com",
+			Email: "user2@gmail.com",
 			Password: "12345678",
 		},
 		{
-			Email: "test13@gmail.com",
+			Email: "user3@gmail.com",
 			Password: "12345678",
 		},
 	}
