@@ -13,6 +13,26 @@ type UserRepo struct {
 	DB *sqlx.DB
 }
 
+func (storage UserRepo) FindUsers(ctx context.Context) (*[]entity.User, error) {
+	sql, _, _ := sq.
+	Select("id", "name", "email", "gender", "phone", "image").
+	From("users").Where("is_admin = $1").ToSql()
+
+	users := []entity.User{}
+
+	rows, err := storage.DB.QueryxContext(ctx, sql, 0)
+	for rows.Next() {
+		user := entity.User{}
+		err = rows.StructScan(&user)
+		users = append(users, user)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	
+	return &users, nil
+}
 func (storage UserRepo) FindUserById(ctx context.Context, id int) (*entity.User, error) {
 	var user entity.User
 	

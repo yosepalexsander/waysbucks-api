@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -41,19 +40,14 @@ func main()  {
 	}).Handler)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.HandleFunc("/debug/pprof/", pprof.Index)
-	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	router.NewRouter(r, appHandler)
 	
 	server := &http.Server{
 		Addr: "127.0.0.1:8080", 
 		Handler: r,
-		ReadTimeout:  time.Second * 10,
-		WriteTimeout: time.Second * 40,
-		IdleTimeout:  time.Second * 40,
+		ReadTimeout:  time.Second * 5,
+		WriteTimeout: time.Second * 10,
+		IdleTimeout:  time.Second * 15,
 	}
 	log.Printf("Server Started")
 	

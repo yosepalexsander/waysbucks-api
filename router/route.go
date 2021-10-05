@@ -10,10 +10,9 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Post("/register", h.Register)
 		r.Post("/login", h.Login)
-	
+		
 		r.Route("/users", func(r chi.Router) {
 			r.Use(customMiddleware.Authentication)
-			r.Get("/", h.GetUsers)
 			r.Get("/{userID}", h.GetUser)
 			r.Put("/{userID}", h.UpdateUser)
 			r.Delete("/{userID}", h.DeleteUser)
@@ -32,9 +31,10 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(customMiddleware.Authentication)
 			r.Use(customMiddleware.AdminOnly)
-			r.Post("/product", h.CreateProduct)
-			r.Put("/product/{productID}", h.UpdateProduct)
-			r.Delete("/product/{productID}", h.DeleteProduct)
+			r.Get("/users", h.GetUsers)
+			r.Post("/products", h.CreateProduct)
+			r.Put("/products/{productID}", h.UpdateProduct)
+			r.Delete("/products/{productID}", h.DeleteProduct)
 		})
 	})
 }

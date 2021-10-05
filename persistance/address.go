@@ -3,7 +3,6 @@ package persistance
 import (
 	"context"
 	"errors"
-	"log"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -36,21 +35,17 @@ func (storage AddressRepo) FindUserAddress(ctx context.Context, userID int) (*[]
 	From("user_address").
 	Where("user_id=$1").ToSql()
 	
-	rows, err := storage.DB.QueryxContext(ctx, sql, userID)
-
-	if err != nil {
-		return nil, err
-	}
-
 	addresses := []entity.UserAddress{}
 
+	rows, err := storage.DB.QueryxContext(ctx, sql, userID)
 	for rows.Next() {
-		var address entity.UserAddress
-		err := rows.StructScan(&address)
-		if err != nil {
-			log.Println(err)
-		}
+		address :=  entity.UserAddress{}
+		err = rows.StructScan(&address)
 		addresses = append(addresses, address)
+	}
+	
+	if err != nil {
+		return nil, err
 	}
 
 	return &addresses, nil
@@ -58,7 +53,7 @@ func (storage AddressRepo) FindUserAddress(ctx context.Context, userID int) (*[]
 
 func (storage AddressRepo) FindAddress(ctx context.Context, id int) (*entity.UserAddress, error) {
 	sql, _, _ := sq.
-	Select("user_id", "name", "phone", "address", "city", "postal_code").
+	Select("id", "user_id", "name", "phone", "address", "city", "postal_code").
 	From("user_address").Where("id=$1").ToSql()
 
 	var address entity.UserAddress
@@ -87,7 +82,6 @@ func (storage AddressRepo) UpdateAddress(ctx context.Context, id int, newAddress
 }
 
 func (storage AddressRepo) DeleteAddress(ctx context.Context, id int, userID int) error {
-
 	sql, _, _ := sq.Delete("user_address").Where("id=$1 AND user_id=$2").ToSql()
 	result, err := storage.DB.ExecContext(ctx, sql, id, userID)
 	

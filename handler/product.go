@@ -65,7 +65,7 @@ func (s *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, _ := json.Marshal(CommonResponse{
+	resp, _ := json.Marshal(commonResponse{
 		Message: "resource successfully created",
 	})
 	responseOK(w, resp)
@@ -80,10 +80,10 @@ func (s *ProductHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseStruct := struct{
-		CommonResponse
+		commonResponse
 		Payload []entity.Product `json:"payload"`
 	} {
-		CommonResponse: CommonResponse{
+		commonResponse: commonResponse{
 			Message: "resource has successfully get",
 		},
 		Payload: products,
@@ -104,10 +104,10 @@ func (s *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseStruct := struct{
-		CommonResponse
+		commonResponse
 		Payload *entity.Product `json:"payload"`
 	} {
-		CommonResponse: CommonResponse{
+		commonResponse: commonResponse{
 			Message: "resource has successfully get",
 		},
 		Payload: product,
@@ -173,7 +173,7 @@ func (s *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resBody, _ := json.Marshal(CommonResponse{
+		resBody, _ := json.Marshal(commonResponse{
 			Message:  "resource successfully deleted",
 		})
 		responseOK(w, resBody)
@@ -190,7 +190,7 @@ func (s *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resBody, _ := json.Marshal(CommonResponse{
+	resBody, _ := json.Marshal(commonResponse{
 		Message:  "resource successfully deleted",
 	})
 	responseOK(w, resBody)
@@ -221,7 +221,7 @@ func (s *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		
-		resBody, _ := json.Marshal(CommonResponse{
+		resBody, _ := json.Marshal(commonResponse{
 			Message:  "resource successfully deleted",
 		})
 		responseOK(w, resBody)

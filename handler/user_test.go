@@ -16,7 +16,10 @@ func TestLogin(t *testing.T) {
 		Timeout: 15 * time.Second,
 	}
 
-	reqStruct := []Login_Req{
+	reqStruct := []struct{
+		Email string
+		Password string
+	}{
 		{
 			Email: "user2@gmail.com",
 			Password: "12345678",
@@ -26,6 +29,7 @@ func TestLogin(t *testing.T) {
 			Password: "12345678",
 		},
 	}
+	
 	for _, req := range reqStruct {
 		reqBody, _ := json.Marshal(req) 
 		requestReader := bytes.NewReader(reqBody)
@@ -51,7 +55,10 @@ func TestRegisterWithInvalidBody(t *testing.T) {
 		Timeout: 15 * time.Second,
 	}
 
-	reqStruct := []Login_Req{
+	reqStruct := []struct{
+		Email string
+		Password string
+	}{
 		{
 			Email: "test14gmail.com",
 			Password: "123456",

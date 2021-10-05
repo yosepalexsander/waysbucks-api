@@ -5,12 +5,12 @@ import (
 	"net/http"
 )
 
-type CommonResponse struct {
+type commonResponse struct {
 	Message string `json:"message"`
 }
 
 func internalServerError(w http.ResponseWriter)  {
-	resp, _ := json.Marshal(CommonResponse{
+	resp, _ := json.Marshal(commonResponse{
 		Message: "server error",
 	})
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
@@ -19,7 +19,7 @@ func internalServerError(w http.ResponseWriter)  {
 }
 
 func forbidden(w http.ResponseWriter)  {
-	resp, _ := json.Marshal(CommonResponse{
+	resp, _ := json.Marshal(commonResponse{
 		Message: "access denied",
 	})
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
@@ -28,7 +28,7 @@ func forbidden(w http.ResponseWriter)  {
 }
 
 func notFound(w http.ResponseWriter)  {
-	resp, _ := json.Marshal(CommonResponse{
+	resp, _ := json.Marshal(commonResponse{
 		Message: "resource not found",
 	})
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
@@ -43,7 +43,7 @@ func responseOK(w http.ResponseWriter, resp []byte)  {
 }
 
 func badRequest(w http.ResponseWriter, msg string)  {
-	resp, _ := json.Marshal(CommonResponse{
+	resp, _ := json.Marshal(commonResponse{
 		Message: msg,
 	})
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")

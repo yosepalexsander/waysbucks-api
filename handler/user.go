@@ -26,48 +26,35 @@ type UserHandler struct {
 	UserUseCase usecase.UserUseCase
 }
 
-type (
-	Register_Req struct {
-		Name string `json:"name" validate:"required"`
-		Email string `json:"email" validate:"required,email"`
-		Password string `json:"password" validate:"required,min=8,max=16"`
-		Gender string `json:"gender" validate:"required"`
-		Phone string `json:"phone" validate:"required"`
-		IsAdmin bool `json:"is_admin"`
-	}
-	Register_Payload struct {
-		Name string `json:"name"`
-		Email string `json:"email"`
-	}
-	Register_Res struct {
-		CommonResponse
-		Payload Register_Payload `json:"payload"`
-	}
-)
-
-type (
-	Login_Req struct {
-		Email string `json:"email"`
-		Password string `json:"password"`
-	}
-	
-	Login_Payload struct {
-		Name string `json:"name"`
-		Email string `json:"email"`
-		Token string `json:"token"`
-	}
-	Login_Res struct {
-		CommonResponse
-		Payload Login_Payload `json:"payload"`
-	}
-)
-
 func (s *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request)  {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Write([]byte("get all users"))
+	type response struct{
+		commonResponse
+		Payload *[]entity.User `json:"payload"`
+	}
+
+	users, err := s.UserUseCase.FindUsers(r.Context())
+
+	if err != nil {
+		internalServerError(w)
+	}
+
+	responseStruct := response{
+		commonResponse: commonResponse{
+			Message: "get resources successfully",
+		},
+		Payload: users,
+	}
+
+	resp, _ := json.Marshal(responseStruct)
+	responseOK(w, resp)
 }
 
 func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request)  {
+	type response struct{
+		commonResponse
+		Payload *entity.User `json:"payload"`
+	}
+
 	userID, _:= strconv.Atoi(chi.URLParam(r, "userID"))
 	user, err := s.UserUseCase.FindUserById(r.Context(), userID)
 
@@ -75,15 +62,13 @@ func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request)  {
 		notFound(w)
     return
 	}
-	responseStruct := struct{
-		CommonResponse
-		Payload *entity.User `json:"payload"`
-	} {
-		CommonResponse: CommonResponse{
+	responseStruct := response{
+		commonResponse: commonResponse{
 			Message: "resource has successfully get",
 		},
 		Payload: user,
 	}
+
 	resBody, _ := json.Marshal(responseStruct)
 	responseOK(w, resBody)
 }
@@ -113,7 +98,7 @@ func (s *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, _ := json.Marshal(CommonResponse{
+	resp, _ := json.Marshal(commonResponse{
 		Message: "resource successfully updated",
 	})
 	responseOK(w, resp)
@@ -138,15 +123,35 @@ func (s *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
     return
 	}
 	
-	resBody, _ := json.Marshal(CommonResponse{
+	resBody, _ := json.Marshal(commonResponse{
 		Message:  "resource successfully deleted",
 	})
 	responseOK(w, resBody)
 }
 
 func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request)  {
+	type (
+		request struct {
+			Name string `json:"name" validate:"required"`
+			Email string `json:"email" validate:"required,email"`
+			Password string `json:"password" validate:"required,min=8,max=16"`
+			Gender string `json:"gender" validate:"required"`
+			Phone string `json:"phone" validate:"required"`
+			IsAdmin bool `json:"is_admin"`
+		}
+		payload struct {
+			Name string `json:"name"`
+			Email string `json:"email"`
+		}
+		response struct {
+			commonResponse
+			Payload payload `json:"payload"`
+		}
+	)
+
 	ctx := r.Context()
-	var body Register_Req
+
+	var body request
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
     return
@@ -163,13 +168,6 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request)  {
     return
 	}
 
-	// bytes, encryptErr := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
-	// if encryptErr != nil {
-	// 	internalServerError(w)
-  //   return
-	// }
-
-	// hashedPassword := string(bytes)
 	newUser := entity.User{
 		Name: body.Name,
 		Email: body.Email,
@@ -183,11 +181,11 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request)  {
 		internalServerError(w)
 		return
 	}
-	responseStruct := Register_Res{
-		CommonResponse: CommonResponse{
+	responseStruct := response{
+		commonResponse: commonResponse{
 			Message: "resource successfully created",
 		},
-		Payload: Register_Payload{
+		Payload: payload{
 			Name: body.Name,
 			Email: body.Email,
 		},
@@ -201,7 +199,23 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request)  {
 // If password is not match when compare with hashedPassword in DB
 // will return message error with code 400  
 func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request)  {
-	var body Login_Req
+	type (
+		loginRequest struct {
+			Email string `json:"email"`
+			Password string `json:"password"`
+		}
+		loginPayload struct {
+			Name string `json:"name"`
+			Email string `json:"email"`
+			Token string `json:"token"`
+		}
+		loginResponse struct {
+		 commonResponse
+		 Payload loginPayload `json:"payload"`
+		}
+	)
+	
+	var body loginRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
     return
@@ -220,27 +234,17 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request)  {
     return
 	}
 
-	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, helper.MyClaims{
-	// 	UserID: user.Id,
-	// 	IsAdmin: user.IsAdmin,
-	// 	StandardClaims: jwt.StandardClaims{
-	// 		ExpiresAt: time.Now().Add(time.Hour * 3).Unix(),
-	// 		Issuer: "Waysbucks",
-	// 	},
-	// })
-
-	// secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
 	tokenString, tokenErr := helper.GenerateToken(user)
 	if tokenErr != nil {
 		log.Println(tokenErr)
 		return
 	}
 
-	responseStruct := Login_Res{
-		CommonResponse: CommonResponse{
+	responseStruct := loginResponse{
+		commonResponse: commonResponse{
 			Message: "login success",
 		},
-		Payload: Login_Payload{
+		Payload: loginPayload{
 			Name: user.Name,
 			Email: body.Email,
 			Token: tokenString,

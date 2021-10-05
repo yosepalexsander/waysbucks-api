@@ -2,7 +2,6 @@ package persistance
 
 import (
 	"context"
-	"log"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -19,26 +18,22 @@ func (storage ProductRepo) FindProducts(ctx context.Context) ([]entity.Product, 
 	var products []entity.Product
 
 	rows, err := storage.DB.QueryxContext(ctx, sql)
+	for rows.Next() {
+		product := entity.Product{}
+		err = rows.StructScan(&product)
+		products = append(products, product)
+	}
 
 	if err != nil {
 		return nil, err
 	}
-	for rows.Next() {
-		product := entity.Product{}
-
-		if err := rows.StructScan(&product); err != nil {
-			log.Println(err)
-		}
-		
-		products = append(products, product)
-	}
-
+	
 	return products, nil
 }
 
 func (storage ProductRepo) FindProduct(ctx context.Context, id int) (*entity.Product, error) {
 	sql, _, _ := sq.
-	Select("name", "description", "image", "price", "is_available").
+	Select("id", "name", "description", "image", "price", "is_available").
 	From("products").
 	Where("id=$1").ToSql()
 
@@ -55,7 +50,7 @@ func (storage ProductRepo) SaveProduct(ctx context.Context, product entity.Produ
 	sql, args, _ := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
 	Insert("products").
 	Columns("name", "description", "image", "price", "is_available").
-	Values(product.Name, product.Description, product.Image, product.Price, product.IsAvailable).ToSql()
+	Values(product.Name, product.Description, product.Image, product.Price, product.Is_Available).ToSql()
 
 	_, err := storage.DB.ExecContext(ctx, sql, args...)
 
@@ -74,7 +69,6 @@ func (storage ProductRepo) UpdateProduct(ctx context.Context, id int, newProduct
 	_, err := storage.DB.ExecContext(ctx, sql, args...)
 
 	if err != nil {
-		log.Println("update error: ", err)
 		return err
 	}
 	

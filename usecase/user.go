@@ -22,6 +22,9 @@ type UserUseCase struct{
 	UserRepository repository.UserRepository
 }
 
+func (u *UserUseCase) FindUsers(ctx context.Context) (*[]entity.User, error) {
+	return u.UserRepository.FindUsers(ctx)
+}
 func (u *UserUseCase) FindUserById(ctx context.Context, id int) (*entity.User, error) {
 	return u.UserRepository.FindUserById(ctx, id)
 }

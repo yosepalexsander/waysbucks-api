@@ -25,6 +25,11 @@ type AddressHandler struct {
 }
 
 func (s *AddressHandler) GetUserAddress(w http.ResponseWriter, r *http.Request) {
+	type response struct{
+		commonResponse
+		Payload *[]entity.UserAddress `json:"payload"`
+	}
+
 	ctx := r.Context()
 	claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims)
 
@@ -39,11 +44,8 @@ func (s *AddressHandler) GetUserAddress(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	responseStruct := struct{
-		CommonResponse
-		Payload *[]entity.UserAddress `json:"payload"`
-	} {
-		CommonResponse: CommonResponse{
+	responseStruct := response{
+		commonResponse: commonResponse{
 			Message: "resource has successfully get",
 		},
 		Payload: address,
@@ -53,8 +55,12 @@ func (s *AddressHandler) GetUserAddress(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *AddressHandler) GetAddress(w http.ResponseWriter, r *http.Request)  {
+	type response struct{
+		commonResponse
+		Payload *entity.UserAddress `json:"payload"`
+	} 
+	
 	addressID, _ := strconv.Atoi(chi.URLParam(r, "addressID")) 
-
 	address, err := s.AddressUseCase.GetAddress(r.Context(), addressID)
 
 	if err != nil {
@@ -62,11 +68,8 @@ func (s *AddressHandler) GetAddress(w http.ResponseWriter, r *http.Request)  {
 		return 
 	}
 
-	responseStruct := struct{
-		CommonResponse
-		Payload *entity.UserAddress `json:"payload"`
-	} {
-		CommonResponse: CommonResponse{
+	responseStruct := response{
+		commonResponse: commonResponse{
 			Message: "resource has successfully get",
 		},
 		Payload: address,
@@ -103,7 +106,7 @@ func (s *AddressHandler) CreateAddress(w http.ResponseWriter, r *http.Request)  
 		return
 	}
 
-	resp, _ := json.Marshal(CommonResponse{
+	resp, _ := json.Marshal(commonResponse{
 		Message: "resource successfully created",
 	})
 	responseOK(w, resp)
@@ -141,7 +144,7 @@ func (s *AddressHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, _ := json.Marshal(CommonResponse{
+	resp, _ := json.Marshal(commonResponse{
 		Message: "resource successfully updated",
 	})
 	responseOK(w, resp)
@@ -161,7 +164,7 @@ func (s *AddressHandler) DeleteAddress(w http.ResponseWriter, r *http.Request)  
 			return
 		}
 		
-		resBody, _ := json.Marshal(CommonResponse{
+		resBody, _ := json.Marshal(commonResponse{
 			Message:  "resource successfully deleted",
 		})
 		responseOK(w, resBody)

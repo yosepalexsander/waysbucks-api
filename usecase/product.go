@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"sync"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/helper"
@@ -19,19 +18,12 @@ func (u *ProductUseCase) GetAllProduct(ctx context.Context) ([]entity.Product, e
 	if err != nil {
 		return nil, err
 	}
-
-	var wg sync.WaitGroup
-	// done := make(chan bool, 1)
-
+	
 	for i := range products {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			imageUrl, _ := helper.GetImageUrl(ctx, products[i].Image)
-			products[i].Image = imageUrl
-		}(i)
+		imageUrl, _ := helper.GetImageUrl(ctx, products[i].Image)
+		products[i].Image = imageUrl
 	}
-	wg.Wait()
+
 	return products, nil
 }
 

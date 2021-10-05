@@ -6,6 +6,6 @@ type Product struct {
 	Description string `db:"description" json:"description" validate:"required"`
 	Image string `db:"image" json:"image" validate:"required"`
 	Price int `db:"price" json:"price" validate:"required"`
-	IsAvailable bool `db:"is_available" json:"is_available"`
+	Is_Available bool `db:"is_available" json:"is_available"`
 }
 
