@@ -11,7 +11,7 @@ type User struct {
 	IsAdmin bool `db:"is_admin" json:"is_admin"`
 }
 
-type UserAddress struct {
+type Address struct {
 	Id int `db:"id" json:"id"`
 	UserId int `db:"user_id" json:"user_id,omitempty"`
 	Name string `db:"name" json:"name" validate:"required"`

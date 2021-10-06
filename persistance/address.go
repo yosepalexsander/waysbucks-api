@@ -13,7 +13,7 @@ type AddressRepo struct {
 	DB *sqlx.DB
 }
 
-func (storage AddressRepo) SaveAddress(ctx context.Context, address entity.UserAddress) error  {
+func (storage AddressRepo) SaveAddress(ctx context.Context, address entity.Address) error  {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.
 	Insert("user_address").
@@ -29,17 +29,17 @@ func (storage AddressRepo) SaveAddress(ctx context.Context, address entity.UserA
 	return nil
 }
 
-func (storage AddressRepo) FindUserAddress(ctx context.Context, userID int) (*[]entity.UserAddress, error) {
+func (storage AddressRepo) FindUserAddress(ctx context.Context, userID int) (*[]entity.Address, error) {
 	sql, _, _ := sq.
 	Select("id", "name", "phone", "address", "city", "postal_code").
 	From("user_address").
 	Where("user_id=$1").ToSql()
 	
-	addresses := []entity.UserAddress{}
+	addresses := []entity.Address{}
 
 	rows, err := storage.DB.QueryxContext(ctx, sql, userID)
 	for rows.Next() {
-		address :=  entity.UserAddress{}
+		address :=  entity.Address{}
 		err = rows.StructScan(&address)
 		addresses = append(addresses, address)
 	}
@@ -51,12 +51,12 @@ func (storage AddressRepo) FindUserAddress(ctx context.Context, userID int) (*[]
 	return &addresses, nil
 }
 
-func (storage AddressRepo) FindAddress(ctx context.Context, id int) (*entity.UserAddress, error) {
+func (storage AddressRepo) FindAddress(ctx context.Context, id int) (*entity.Address, error) {
 	sql, _, _ := sq.
 	Select("id", "user_id", "name", "phone", "address", "city", "postal_code").
 	From("user_address").Where("id=$1").ToSql()
 
-	var address entity.UserAddress
+	var address entity.Address
 	err := storage.DB.QueryRowxContext(ctx, sql, id).StructScan(&address)
 
 	if err != nil {

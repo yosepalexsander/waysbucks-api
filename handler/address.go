@@ -13,7 +13,7 @@ import (
 )
 
 // type AddressHandler interface {
-// 	GetUserAddress(w http.ResponseWriter, r *http.Request)
+// 	GetAddress(w http.ResponseWriter, r *http.Request)
 // 	GetAddress(w http.ResponseWriter, r *http.Request)
 // 	CreateAddress(w http.ResponseWriter, r *http.Request)
 // 	UpdateAddress(w http.ResponseWriter, r *http.Request)
@@ -27,7 +27,7 @@ type AddressHandler struct {
 func (s *AddressHandler) GetUserAddress(w http.ResponseWriter, r *http.Request) {
 	type response struct{
 		commonResponse
-		Payload *[]entity.UserAddress `json:"payload"`
+		Payload *[]entity.Address `json:"payload"`
 	}
 
 	ctx := r.Context()
@@ -57,7 +57,7 @@ func (s *AddressHandler) GetUserAddress(w http.ResponseWriter, r *http.Request) 
 func (s *AddressHandler) GetAddress(w http.ResponseWriter, r *http.Request)  {
 	type response struct{
 		commonResponse
-		Payload *entity.UserAddress `json:"payload"`
+		Payload *entity.Address `json:"payload"`
 	} 
 	
 	addressID, _ := strconv.Atoi(chi.URLParam(r, "addressID")) 
@@ -88,7 +88,7 @@ func (s *AddressHandler) CreateAddress(w http.ResponseWriter, r *http.Request)  
 		return
 	}
 
-	var body entity.UserAddress
+	var body entity.Address
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
     return
