@@ -25,5 +25,4 @@ func Connect(db *DBStore) {
 	}
 	db.DB.SetMaxOpenConns(5)
 	db.DB.SetMaxIdleConns(2)
-	log.Println("connect db")
 }

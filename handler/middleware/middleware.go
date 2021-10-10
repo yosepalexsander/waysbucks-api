@@ -9,9 +9,11 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/helper"
 )
 
-type contextKey string
+type contextKey struct {
+	name string
+}
 
-const TokenCtxKey = contextKey("tokenPayload")
+var TokenCtxKey = &contextKey{name: "tokenPayload"}
 
 func Authentication(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -48,5 +50,16 @@ func Authentication(next http.Handler) http.Handler {
 		claims := token.Claims
 		ctx := context.WithValue(r.Context(), TokenCtxKey, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func AdminOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, ok := r.Context().Value(TokenCtxKey).(*helper.MyClaims)
+		if !ok || !claims.IsAdmin {
+			http.Error(w, "access denied", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }

@@ -3,6 +3,7 @@ package helper
 import (
 	"log"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/go-playground/locales/en"
@@ -54,4 +55,15 @@ func addTranslation(v *validator.Validate, trans ut.Translator, tag string, errM
 		 return t
 	}
 	_ = v.RegisterTranslation(tag, trans, registerFn, transFn)
+}
+
+func ValidateImageFile(filename string) error {
+	regex, _ := regexp.Compile(`\.(jpg|JPEG|png|PNG|svg|SVG)$`)
+
+	// Check if file extension match the regex or not
+	if isMatch := regex.MatchString(filename); !isMatch {
+		return ErrorInvalidFileExtension
+	}
+
+	return nil
 }

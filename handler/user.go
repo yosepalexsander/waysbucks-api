@@ -13,15 +13,6 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/usecase"
 )
 
-// type UserHandler interface {
-// 	GetUsers(w http.ResponseWriter, r *http.Request)
-// 	GetUser(w http.ResponseWriter, r *http.Request)
-// 	UpdateUser(w http.ResponseWriter, r *http.Request)
-// 	DeleteUser(w http.ResponseWriter, r *http.Request)
-// 	Register(w http.ResponseWriter, r *http.Request)
-// 	Login(w http.ResponseWriter, r *http.Request)
-// }
-
 type UserHandler struct {
 	UserUseCase usecase.UserUseCase
 }
@@ -29,7 +20,7 @@ type UserHandler struct {
 func (s *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request)  {
 	type response struct{
 		commonResponse
-		Payload *[]entity.User `json:"payload"`
+		Payload []entity.User `json:"payload"`
 	}
 
 	users, err := s.UserUseCase.FindUsers(r.Context())
@@ -200,29 +191,28 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request)  {
 // will return message error with code 400  
 func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request)  {
 	type (
-		loginRequest struct {
+		request struct {
 			Email string `json:"email"`
 			Password string `json:"password"`
 		}
-		loginPayload struct {
+		payload struct {
 			Name string `json:"name"`
 			Email string `json:"email"`
 			Token string `json:"token"`
 		}
-		loginResponse struct {
+		response struct {
 		 commonResponse
-		 Payload loginPayload `json:"payload"`
+		 Payload payload `json:"payload"`
 		}
 	)
 	
-	var body loginRequest
+	var body request
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
     return
 	}
 	
 	user, err := s.UserUseCase.FindUserByEmail(r.Context(), body.Email)
-
 	if err != nil {
 		notFound(w)
     return
@@ -240,11 +230,11 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request)  {
 		return
 	}
 
-	responseStruct := loginResponse{
+	responseStruct := response{
 		commonResponse: commonResponse{
 			Message: "login success",
 		},
-		Payload: loginPayload{
+		Payload: payload{
 			Name: user.Name,
 			Email: body.Email,
 			Token: tokenString,

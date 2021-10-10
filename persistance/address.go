@@ -29,7 +29,7 @@ func (storage AddressRepo) SaveAddress(ctx context.Context, address entity.Addre
 	return nil
 }
 
-func (storage AddressRepo) FindUserAddress(ctx context.Context, userID int) (*[]entity.Address, error) {
+func (storage AddressRepo) FindUserAddress(ctx context.Context, userID int) ([]entity.Address, error) {
 	sql, _, _ := sq.
 	Select("id", "name", "phone", "address", "city", "postal_code").
 	From("user_address").
@@ -48,7 +48,7 @@ func (storage AddressRepo) FindUserAddress(ctx context.Context, userID int) (*[]
 		return nil, err
 	}
 
-	return &addresses, nil
+	return addresses, nil
 }
 
 func (storage AddressRepo) FindAddress(ctx context.Context, id int) (*entity.Address, error) {

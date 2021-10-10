@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -16,7 +17,9 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/interactor"
 	"github.com/yosepalexsander/waysbucks-api/router"
 )
-
+func init() {
+	runtime.GOMAXPROCS(1)
+}
 func main()  {
 	var dbStore db.DBStore
 	db.Connect(&dbStore)
@@ -42,14 +45,20 @@ func main()  {
 	r.Use(middleware.Recoverer)
 	router.NewRouter(r, appHandler)
 	
+	port := os.Getenv("PORT")
+	if port == "" {
+			port = "8080" // Default port if not specified
+	}
+
 	server := &http.Server{
-		Addr: "127.0.0.1:8080", 
+		Addr: ":" + port, 
 		Handler: r,
 		ReadTimeout:  time.Second * 5,
 		WriteTimeout: time.Second * 10,
 		IdleTimeout:  time.Second * 15,
 	}
-	log.Printf("Server Started")
+	
+	log.Printf("Server Started on port 8080")
 	
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

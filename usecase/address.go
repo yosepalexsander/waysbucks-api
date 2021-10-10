@@ -19,7 +19,7 @@ type AddressUseCase struct {
 	AddressRepository repository.AddressRepository
 }
 
-func (u *AddressUseCase) GetUserAddress(ctx context.Context, userID int) (*[]entity.Address, error) {
+func (u *AddressUseCase) GetUserAddress(ctx context.Context, userID int) ([]entity.Address, error) {
 	return u.AddressRepository.FindUserAddress(ctx, userID)
 }
 

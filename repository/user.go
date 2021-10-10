@@ -7,7 +7,7 @@ import (
 )
 
 type UserRepository interface {
-	FindUsers(ctx context.Context) (*[]entity.User, error)
+	FindUsers(ctx context.Context) ([]entity.User, error)
 	FindUserById(ctx context.Context, id int) (*entity.User, error)
 	FindUserByEmail(ctx context.Context, email string) (*entity.User, error)
 	SaveUser(ctx context.Context, user entity.User) error

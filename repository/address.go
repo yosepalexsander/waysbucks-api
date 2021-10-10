@@ -7,7 +7,7 @@ import (
 )
 
 type AddressRepository interface {
-	FindUserAddress(ctx context.Context, userID int) (*[]entity.Address, error)
+	FindUserAddress(ctx context.Context, userID int) ([]entity.Address, error)
 	FindAddress(ctx context.Context, id int) (*entity.Address, error)
 	SaveAddress(ctx context.Context, address entity.Address) error
 	UpdateAddress(ctx context.Context, id int, newAddress map[string]interface{}) error

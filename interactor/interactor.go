@@ -46,6 +46,7 @@ func (i *Interactor) NewProductHandler() handler.ProductHandler {
 	return handler.ProductHandler{
 		ProductUseCase: usecase.ProductUseCase{
 			ProductRepository: persistance.ProductRepo{DB:i.DB},
+			ToppingRepository: persistance.ToppingRepo{DB: i.DB},
 		},
 	}
 }

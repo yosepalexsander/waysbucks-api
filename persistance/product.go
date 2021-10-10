@@ -2,6 +2,7 @@ package persistance
 
 import (
 	"context"
+	"log"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -13,7 +14,8 @@ type ProductRepo struct {
 }
 
 func (storage ProductRepo) FindProducts(ctx context.Context) ([]entity.Product, error) {
-	sql, _, _ := sq.Select("id", "name", "description", "image", "price", "is_available").From("products").OrderByClause("created_at DESC").ToSql()
+	sql, _, _ := sq.Select("id", "name", "description", "image", "price", "is_available", "created_at", "updated_at").
+	From("products").OrderByClause("created_at DESC").ToSql()
 
 	var products []entity.Product
 
@@ -25,6 +27,7 @@ func (storage ProductRepo) FindProducts(ctx context.Context) ([]entity.Product, 
 	}
 
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	

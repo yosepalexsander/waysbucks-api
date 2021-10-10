@@ -12,14 +12,6 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/usecase"
 )
 
-// type AddressHandler interface {
-// 	GetAddress(w http.ResponseWriter, r *http.Request)
-// 	GetAddress(w http.ResponseWriter, r *http.Request)
-// 	CreateAddress(w http.ResponseWriter, r *http.Request)
-// 	UpdateAddress(w http.ResponseWriter, r *http.Request)
-// 	DeleteAddress(w http.ResponseWriter, r *http.Request)
-// }
-
 type AddressHandler struct {
 	AddressUseCase usecase.AddressUseCase
 }
@@ -27,7 +19,7 @@ type AddressHandler struct {
 func (s *AddressHandler) GetUserAddress(w http.ResponseWriter, r *http.Request) {
 	type response struct{
 		commonResponse
-		Payload *[]entity.Address `json:"payload"`
+		Payload []entity.Address `json:"payload"`
 	}
 
 	ctx := r.Context()
