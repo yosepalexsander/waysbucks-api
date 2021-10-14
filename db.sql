@@ -50,20 +50,12 @@ CREATE TABLE carts (
   id SERIAL PRIMARY KEY,
   user_id INT NOT NULL,
   product_id INT NOT NULL,
-  topping_id INT ARRAY;
+  topping_id INT ARRAY,
   price INT NOT NULL,
   quantity INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
-);
-
-CREATE TABLE cart_topping (
-  id SERIAL PRIMARY KEY,
-  cart_id INT,
-  topping_id INT,
-  CONSTRAINT fk_cart FOREIGN KEY(cart_id) REFERENCES carts(id) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fk_topping FOREIGN KEY(topping_id) REFERENCES toppings(id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE transactions (
@@ -85,20 +77,13 @@ CREATE TABLE orders (
   id SERIAL PRIMARY KEY,
   transaction_id INT,
   product_id INT NOT NULL,
+  topping_id INT ARRAY,
   price INT NOT NULL,
   quantity SMALLINT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_transaction FOREIGN KEY(transaction_id) REFERENCES transactions(id) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT fk_product FOREIGN KEY(product_id) REFERENCES products(id) ON UPDATE CASCADE ON DELETE CASCADE
-);
-
-CREATE TABLE order_topping (
-  id SERIAL PRIMARY KEY,
-  order_id INT,
-  topping_id INT,
-  CONSTRAINT fk_order FOREIGN KEY(order_id) REFERENCES orders(id) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fk_topping FOREIGN KEY(topping_id) REFERENCES toppings(id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE OR REPLACE FUNCTION change_update_at_column() RETURNS TRIGGER AS $$

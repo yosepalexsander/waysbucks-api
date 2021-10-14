@@ -16,6 +16,7 @@ type AppHandler struct {
 	handler.AddressHandler
 	handler.ProductHandler
 	handler.CartHandler
+	handler.TransactionHandler
 }
 
 
@@ -59,5 +60,13 @@ func (i *Interactor) NewCartHandler() handler.CartHandler {
 			CartRepository: persistance.CartRepo{DB:i.DB},
 		},
 	}
+}
+
+func (i *Interactor) NewTransasctionHandler() *handler.TransactionHandler {
+
+	return handler.NewTransactionHandler(usecase.TransactionUseCase{
+		Finder: persistance.NewTransactionFinder(i.DB),
+		Transactioner: persistance.NewTransactionTx(i.DB),
+	})
 }
 
