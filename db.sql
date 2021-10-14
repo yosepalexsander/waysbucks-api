@@ -50,6 +50,7 @@ CREATE TABLE carts (
   id SERIAL PRIMARY KEY,
   user_id INT NOT NULL,
   product_id INT NOT NULL,
+  topping_id INT ARRAY;
   price INT NOT NULL,
   quantity INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -1,7 +1,6 @@
 package helper
 
 import (
-	"log"
 	"reflect"
 	"regexp"
 	"strings"
@@ -30,9 +29,6 @@ func Validate(value interface{}) (bool, string)  {
 	err := v.Struct(value)
 	if err != nil {
 		validationErrors := err.(validator.ValidationErrors)
-		for _, err := range validationErrors {
-			log.Println(err.Error())
-		}
 		msgErr := validationErrors[0].Translate(trans)
 		return false, msgErr
 	}

@@ -32,6 +32,7 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 		r.Route("/products", func(r chi.Router) {
 			r.Get("/", h.GetProducts)
 			r.Get("/{productID}", h.GetProduct)
+			
 			r.Group(func(r chi.Router) {
 				r.Use(customMiddleware.Authentication)
 				r.Use(customMiddleware.AdminOnly)
@@ -50,7 +51,14 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 				r.Put("/{toppingID}", h.UpdateTopping)
 				r.Delete("/{toppingID}", h.DeleteTopping)
 			})
-			
+		})
+
+		r.Route("/carts", func(r chi.Router) {
+			r.Use(customMiddleware.Authentication)
+			r.Get("/", h.GetUserCarts)
+			r.Post("/", h.CreateCart)
+			r.Put("/{cartID}", h.UpdateCart)
+			r.Delete("/{cartID}", h.DeleteCart)
 		})
 	})
 }

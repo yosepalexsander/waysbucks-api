@@ -15,6 +15,7 @@ type AppHandler struct {
 	handler.UserHandler
 	handler.AddressHandler
 	handler.ProductHandler
+	handler.CartHandler
 }
 
 
@@ -23,6 +24,7 @@ func (i *Interactor) NewAppHandler() *AppHandler {
 	appHandler.UserHandler = i.NewUserHandler()
 	appHandler.AddressHandler = i.NewAddressHandler()
 	appHandler.ProductHandler = i.NewProductHandler()
+	appHandler.CartHandler = i.NewCartHandler()
 	return appHandler
 }
 
@@ -47,6 +49,14 @@ func (i *Interactor) NewProductHandler() handler.ProductHandler {
 		ProductUseCase: usecase.ProductUseCase{
 			ProductRepository: persistance.ProductRepo{DB:i.DB},
 			ToppingRepository: persistance.ToppingRepo{DB: i.DB},
+		},
+	}
+}
+
+func (i *Interactor) NewCartHandler() handler.CartHandler {
+	return handler.CartHandler{
+		CartUseCase: usecase.CartUseCase{
+			CartRepository: persistance.CartRepo{DB:i.DB},
 		},
 	}
 }
