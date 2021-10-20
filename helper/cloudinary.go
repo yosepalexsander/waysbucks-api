@@ -16,7 +16,8 @@ import (
 var (
 	ErrorInvalidFileExtension error = errors.New("invalid file extension")
 )
-func UploadFile(ctx context.Context, file multipart.File, filename string) (error) {
+
+func UploadFile(ctx context.Context, file multipart.File, filename string) error {
 	cld, err := cloudinary.NewFromURL(os.Getenv("CLOUDINARY_URL"))
 
 	if err != nil {
@@ -28,7 +29,7 @@ func UploadFile(ctx context.Context, file multipart.File, filename string) (erro
 	_, uploadErr := cld.Upload.Upload(
 		ctx,
 		file,
-		uploader.UploadParams{ PublicID: filename, UniqueFilename: true, UseFilename: true },
+		uploader.UploadParams{PublicID: filename, UniqueFilename: true, UseFilename: true},
 	)
 
 	if uploadErr != nil {

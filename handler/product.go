@@ -21,10 +21,10 @@ type ProductHandler struct {
 }
 
 func (s *ProductHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
-	type response struct{
+	type response struct {
 		commonResponse
 		Payload []entity.Product `json:"payload"`
-	} 
+	}
 
 	products, err := s.ProductUseCase.GetProducts(r.Context())
 	if err != nil {
@@ -44,14 +44,14 @@ func (s *ProductHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
-	type response struct{
+	type response struct {
 		commonResponse
 		Payload *entity.Product `json:"payload"`
 	}
-	
+
 	ctx := r.Context()
 	productID, _ := strconv.Atoi(chi.URLParam(r, "productID"))
-	
+
 	product, err := s.ProductUseCase.GetProduct(ctx, productID)
 	if err != nil {
 		internalServerError(w)
@@ -71,7 +71,7 @@ func (s *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 
 func (s *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	
+
 	if err := r.ParseMultipartForm(5 << 20); err != nil {
 		badRequest(w, "maximum upload size is 5 MB")
 		return
@@ -80,34 +80,34 @@ func (s *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	file, header, fileErr := r.FormFile("image")
 	if fileErr != nil {
 		badRequest(w, fileErr.Error())
-		return 
+		return
 	}
-	
+
 	defer file.Close()
 
 	if err := helper.ValidateImageFile(header.Filename); err != nil {
 		badRequest(w, "upload only for image")
 	}
 	filename := strings.Split(header.Filename, ".")[0] + helper.RandString(15)
-	
+
 	var body entity.Product
 	if err := schema.NewDecoder().Decode(&body, r.MultipartForm.Value); err != nil {
 		badRequest(w, "invalid request body")
 		return
 	}
 	body.Image = filename
-	
+
 	if isValid, msg := helper.Validate(body); !isValid {
 		badRequest(w, msg)
 		return
 	}
 
-	if err := s.ProductUseCase.CreateProduct(ctx, body); err != nil {
+	if err := helper.UploadFile(ctx, file, filename); err != nil {
 		internalServerError(w)
 		return
 	}
 
-	if err := helper.UploadFile(ctx, file, filename); err != nil  {
+	if err := s.ProductUseCase.CreateProduct(ctx, body); err != nil {
 		internalServerError(w)
 		return
 	}
@@ -123,21 +123,21 @@ func (s *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	productID, _ := strconv.Atoi(chi.URLParam(r, "productID"))
 	mediatype, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	body := make(map[string]interface{})
-	
+
 	if mediatype == "multipart/form-data" {
 		if err := r.ParseMultipartForm(10 << 20); err != nil {
 			badRequest(w, "maximum upload size is 10 MB")
 			return
 		}
-		
+
 		for k, v := range r.MultipartForm.Value {
 			body[k] = v[0]
 		}
-		
+
 		file, header, fileErr := r.FormFile("image")
 		if fileErr != nil {
 			badRequest(w, fileErr.Error())
-			return 
+			return
 		}
 		defer file.Close()
 
@@ -146,10 +146,10 @@ func (s *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 			internalServerError(w)
 			return
 		}
-		
+
 		filename := strings.Split(header.Filename, ".")[0] + helper.RandString(15)
 		body["image"] = filename
-		
+
 		if err := s.ProductUseCase.UpdateProduct(ctx, productID, body); err != nil {
 			internalServerError(w)
 			return
@@ -159,9 +159,9 @@ func (s *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 			internalServerError(w)
 			return
 		}
-		
+
 		resBody, _ := json.Marshal(commonResponse{
-			Message:  "resource has successfully updated",
+			Message: "resource has successfully updated",
 		})
 		responseOK(w, resBody)
 		return
@@ -178,7 +178,7 @@ func (s *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resBody, _ := json.Marshal(commonResponse{
-		Message:  "resource has successfully updated",
+		Message: "resource has successfully updated",
 	})
 	responseOK(w, resBody)
 }
@@ -186,14 +186,14 @@ func (s *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 func (s *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	productID, _ := strconv.Atoi(chi.URLParam(r, "productID"))
-	
+
 	if _, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
 		product, err := s.ProductUseCase.GetProduct(ctx, productID)
 		if err != nil {
 			notFound(w)
 			return
 		}
-		
+
 		if err := s.ProductUseCase.DeleteProduct(ctx, productID); err != nil {
 			internalServerError(w)
 			return
@@ -204,9 +204,8 @@ func (s *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		
 		resBody, _ := json.Marshal(commonResponse{
-			Message:  "resource has successfully deleted",
+			Message: "resource has successfully deleted",
 		})
 		responseOK(w, resBody)
 	} else {
@@ -215,7 +214,7 @@ func (s *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *ProductHandler) GetToppings(w http.ResponseWriter, r *http.Request) { 
+func (s *ProductHandler) GetToppings(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
 		Payload []entity.ProductTopping
@@ -253,7 +252,7 @@ func (s *ProductHandler) CreateTopping(w http.ResponseWriter, r *http.Request) {
 	file, header, fileErr := r.FormFile("image")
 	if fileErr != nil {
 		badRequest(w, fileErr.Error())
-		return 
+		return
 	}
 	defer file.Close()
 
@@ -279,13 +278,13 @@ func (s *ProductHandler) CreateTopping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := helper.UploadFile(ctx, file, filename); err != nil  {
+	if err := helper.UploadFile(ctx, file, filename); err != nil {
 		internalServerError(w)
 		return
 	}
 
 	resBody, _ := json.Marshal(commonResponse{
-		Message:  "resource has successfully created",
+		Message: "resource has successfully created",
 	})
 	responseOK(w, resBody)
 }
@@ -295,21 +294,21 @@ func (s *ProductHandler) UpdateTopping(w http.ResponseWriter, r *http.Request) {
 	toppingID, _ := strconv.Atoi(chi.URLParam(r, "toppingID"))
 	mediatype, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	body := make(map[string]interface{})
-	
+
 	if mediatype == "multipart/form-data" {
 		if err := r.ParseMultipartForm(5 << 20); err != nil {
 			badRequest(w, "maximum upload size is 5 MB")
 			return
 		}
-		
+
 		for k, v := range r.MultipartForm.Value {
 			body[k] = v[0]
 		}
-		
+
 		file, header, fileErr := r.FormFile("image")
 		if fileErr != nil {
 			badRequest(w, fileErr.Error())
-			return 
+			return
 		}
 		defer file.Close()
 
@@ -323,7 +322,7 @@ func (s *ProductHandler) UpdateTopping(w http.ResponseWriter, r *http.Request) {
 			badRequest(w, "upload only for image")
 			return
 		}
-	
+
 		filename := strings.Split(header.Filename, ".")[0] + helper.RandString(15)
 		body["image"] = filename
 
@@ -338,7 +337,7 @@ func (s *ProductHandler) UpdateTopping(w http.ResponseWriter, r *http.Request) {
 		}
 
 		resBody, _ := json.Marshal(commonResponse{
-			Message:  "resource has successfully updated",
+			Message: "resource has successfully updated",
 		})
 		responseOK(w, resBody)
 		return
@@ -355,7 +354,7 @@ func (s *ProductHandler) UpdateTopping(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resBody, _ := json.Marshal(commonResponse{
-		Message:  "resource has successfully updated",
+		Message: "resource has successfully updated",
 	})
 	responseOK(w, resBody)
 }
@@ -363,14 +362,14 @@ func (s *ProductHandler) UpdateTopping(w http.ResponseWriter, r *http.Request) {
 func (s *ProductHandler) DeleteTopping(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	toppingID, _ := strconv.Atoi(chi.URLParam(r, "toppingID"))
-	
+
 	if _, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
 		topping, err := s.ProductUseCase.GetTopping(ctx, toppingID)
 		if err != nil {
 			notFound(w)
 			return
 		}
-		
+
 		if err := s.ProductUseCase.DeleteTopping(ctx, toppingID); err != nil {
 			internalServerError(w)
 			return
@@ -379,9 +378,9 @@ func (s *ProductHandler) DeleteTopping(w http.ResponseWriter, r *http.Request) {
 			internalServerError(w)
 			return
 		}
-		
+
 		resBody, _ := json.Marshal(commonResponse{
-			Message:  "resource has successfully deleted",
+			Message: "resource has successfully deleted",
 		})
 		responseOK(w, resBody)
 	} else {

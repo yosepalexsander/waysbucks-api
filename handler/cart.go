@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -17,7 +16,7 @@ type CartHandler struct {
 	CartUseCase usecase.CartUseCase
 }
 
-func (s *CartHandler) GetUserCarts(w http.ResponseWriter, r *http.Request)  {
+func (s *CartHandler) GetUserCarts(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
 		Payload []entity.Cart `json:"payload"`
@@ -27,18 +26,21 @@ func (s *CartHandler) GetUserCarts(w http.ResponseWriter, r *http.Request)  {
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
 		carts, err := s.CartUseCase.GetUserCarts(ctx, claims.UserID)
 		if err != nil {
-			log.Println(err)
+			if err.Error() == "object storage service unavailable" {
+				serviceUnavailable(w, "error: "+err.Error())
+				return
+			}
 			internalServerError(w)
 			return
 		}
-	
+
 		resp, _ := json.Marshal(response{
 			commonResponse: commonResponse{
 				Message: "resources successfully get",
 			},
 			Payload: carts,
 		})
-	
+
 		responseOK(w, resp)
 	} else {
 		w.WriteHeader(http.StatusUnprocessableEntity)
@@ -75,7 +77,7 @@ func (s *CartHandler) CreateCart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resBody, _ := json.Marshal(commonResponse{
-		Message:  "resource has successfully created",
+		Message: "resource has successfully created",
 	})
 	responseOK(w, resBody)
 }
@@ -100,14 +102,14 @@ func (s *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w)
 		return
 	}
-	
+
 	resBody, _ := json.Marshal(commonResponse{
-		Message:  "resource has successfully updated",
+		Message: "resource has successfully updated",
 	})
 	responseOK(w, resBody)
 }
 
-func (s CartHandler) DeleteCart(w http.ResponseWriter, r *http.Request)  {
+func (s CartHandler) DeleteCart(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	cartID, _ := strconv.Atoi(chi.URLParam(r, "cartID"))
 	claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims)
@@ -122,7 +124,7 @@ func (s CartHandler) DeleteCart(w http.ResponseWriter, r *http.Request)  {
 		return
 	}
 	resBody, _ := json.Marshal(commonResponse{
-		Message:  "resource has successfully deleted",
+		Message: "resource has successfully deleted",
 	})
 	responseOK(w, resBody)
 }

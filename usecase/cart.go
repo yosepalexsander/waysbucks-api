@@ -3,13 +3,13 @@ package usecase
 import (
 	"context"
 	"database/sql"
-	"sync"
+	"errors"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/helper"
 	"github.com/yosepalexsander/waysbucks-api/repository"
+	"golang.org/x/sync/errgroup"
 )
-
 
 type CartUseCase struct {
 	CartRepository repository.CartRepository
@@ -18,31 +18,34 @@ type CartUseCase struct {
 func (u *CartUseCase) GetUserCarts(ctx context.Context, userID int) ([]entity.Cart, error) {
 	carts, err := u.CartRepository.FindCarts(ctx, userID)
 	switch {
-		case err != nil:
-			return nil, err
-		case len(carts) == 0:
-			return nil, sql.ErrNoRows
+	case err != nil:
+		return nil, err
+	case len(carts) == 0:
+		return nil, sql.ErrNoRows
 	}
-	var wg sync.WaitGroup
 
-	wg.Add(len(carts))
+	g, ctx := errgroup.WithContext(ctx)
+
 	for i := range carts {
-		go func(i int) {
-			defer wg.Done()
+		i := i
+		g.Go(func() error {
 			imageUrl, err := helper.GetImageUrl(ctx, carts[i].Product.Image)
 			if err == nil && imageUrl != "" {
 				carts[i].Product.Image = imageUrl
+				carts[i].Product_Id = 0
+				carts[i].ToppingIds = nil
 			}
-			carts[i].Product_Id = 0
-			carts[i].ToppingIds = nil
-		}(i)
+			return err
+		})
 	}
-	wg.Wait()
-	
+
+	if err := g.Wait(); err != nil {
+		return nil, errors.New("object storage service unavailable")
+	}
 	return carts, nil
 }
 
-func (u CartUseCase) SaveToCart(ctx context.Context, cart entity.Cart) error  {
+func (u *CartUseCase) SaveToCart(ctx context.Context, cart entity.Cart) error {
 	err := u.CartRepository.SaveToCart(ctx, cart)
 	if err != nil {
 		return err
@@ -51,10 +54,10 @@ func (u CartUseCase) SaveToCart(ctx context.Context, cart entity.Cart) error  {
 	return nil
 }
 
-func (u CartUseCase) UpdateCart(ctx context.Context, id int, userID int, data map[string]interface{}) error  {
+func (u *CartUseCase) UpdateCart(ctx context.Context, id int, userID int, data map[string]interface{}) error {
 	return u.CartRepository.UpdateCart(ctx, id, userID, data)
 }
 
-func (u CartUseCase) DeleteCart(ctx context.Context, id, userID int) error {
+func (u *CartUseCase) DeleteCart(ctx context.Context, id, userID int) error {
 	return u.CartRepository.DeleteCart(ctx, id, userID)
 }
