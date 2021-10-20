@@ -38,6 +38,7 @@ func notFound(w http.ResponseWriter) {
 
 func responseOK(w http.ResponseWriter, resp []byte) {
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
+	w.Header().Add("Transfer-Encoding", "chunked")
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
 }

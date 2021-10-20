@@ -2,25 +2,25 @@ package entity
 
 type Transaction struct {
 	Id         int    `db:"id"`
-	User_Id    int    `db:"user_id"`
-	Name       string `db:"name"`
-	Address    string `db:"address"`
-	PostalCode int    `db:"postal_code"`
-	City       string `db:"city"`
-	Phone      string `db:"phone"`
-	Total      int    `db:"total"`
-	Status     string `db:"status"`
+	User_Id    int    `db:"user_id" json:"-"`
+	Name       string `db:"name" json:"name"`
+	Address    string `db:"address" json:"address"`
+	PostalCode int    `db:"postal_code" json:"postal_code"`
+	City       string `db:"city" json:"city"`
+	Phone      string `db:"phone" json:"phone"`
+	Total      int    `db:"total" json:"total"`
+	Status     string `db:"status" json:"status"`
 	Orders     []Order
 }
 
 type Order struct {
 	Id             int     `db:"id" json:"id"`
-	Transaction_Id int     `db:"transaction_id"`
-	Product_Id     int     `db:"product_id"`
-	Topping_Ids    []int64 `db:"topping_id"`
+	Transaction_Id int     `db:"transaction_id" json:"-"`
+	Product_Id     int     `db:"product_id" json:"-"`
+	Topping_Ids    []int64 `db:"topping_id" json:"-"`
 	OrderProduct
-	Price    int `db:"price"`
-	Qty      int `db:"qty"`
+	Price    int `db:"price" json:"price"`
+	Qty      int `db:"qty" json:"qty"`
 	Toppings []OrderTopping
 }
 
@@ -57,22 +57,4 @@ type TransactionRequest struct {
 	Total      int            `json:"total" validate:"required"`
 	Status     string         `json:"status" validate:"required"`
 	Order      []OrderRequest `json:"orders"`
-}
-
-type TransactionResponse struct {
-	Name       string          `json:"name"`
-	Address    string          `json:"address"`
-	PostalCode int             `json:"postal_code"`
-	City       string          `json:"city"`
-	Total      int             `json:"total"`
-	Status     string          `json:"status"`
-	Orders     []OrderResponse `json:"orders"`
-}
-
-type OrderResponse struct {
-	Id int `json:"id"`
-	OrderProduct
-	Price    int            `json:"price"`
-	Qty      int            `json:"qty"`
-	Toppings []OrderTopping `json:"toppings"`
 }

@@ -53,17 +53,16 @@ func (s *TransactionHandler) CreateTransaction(w http.ResponseWriter, r *http.Re
 func (s *TransactionHandler) GetTransactions(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
-		Payload []entity.TransactionResponse `json:"payload"`
+		Payload []entity.Transaction `json:"payload"`
 	}
 
 	ctx := r.Context()
-	claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims)
+	_, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims)
 	if !ok {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 	}
 
-	transactions, err := s.TransactionUseCase.GetTransactions(ctx, claims.UserID)
-
+	transactions, err := s.TransactionUseCase.GetTransactions(ctx)
 	if err != nil {
 		internalServerError(w)
 		return
@@ -82,7 +81,7 @@ func (s *TransactionHandler) GetTransactions(w http.ResponseWriter, r *http.Requ
 func (s *TransactionHandler) GetUserTransactions(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
-		Payload []entity.TransactionResponse `json:"payload"`
+		Payload []entity.Transaction `json:"payload"`
 	}
 
 	ctx := r.Context()
@@ -114,7 +113,7 @@ func (s *TransactionHandler) GetUserTransactions(w http.ResponseWriter, r *http.
 func (s *TransactionHandler) GetTransaction(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
-		Payload entity.TransactionResponse `json:"payload"`
+		Payload *entity.Transaction `json:"payload"`
 	}
 
 	ctx := r.Context()

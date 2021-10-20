@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/NYTimes/gziphandler"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
@@ -55,7 +56,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:         ":" + port,
-		Handler:      r,
+		Handler:      gziphandler.GzipHandler(r),
 		ReadTimeout:  time.Second * 5,
 		WriteTimeout: time.Second * 10,
 		IdleTimeout:  time.Second * 30,

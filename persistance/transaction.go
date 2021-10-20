@@ -3,7 +3,6 @@ package persistance
 import (
 	"context"
 	"database/sql"
-	"sync"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -39,62 +38,54 @@ var (
 )
 
 func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.Transaction, error) {
-	sql, _, _ := sq.Select("id", "name", "address", "postal_code", "city", "total", "status").From("transactions").ToSql()
-	orderSql, _, _ := sq.Select("id", "product_id", "topping_id", "price", "qty").From("orders").Where("transaction_id=$1").ToSql()
-	productSql, _, _ := sq.Select("name", "image").From("products").Where("id=$1").ToSql()
-	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id=$1").ToSql()
-
+	sql, _, _ := sq.Select("id", "name", "address", "phone", "postal_code", "city", "total", "status").From("transactions").ToSql()
 	var transactions []entity.Transaction
+
 	rows, err := storage.db.QueryxContext(ctx, sql)
 	if err != nil {
 		return nil, err
 	}
 
-	var wg sync.WaitGroup
 	for rows.Next() {
-		var transaction entity.Transaction
-		if err = rows.StructScan(&transaction); err != nil {
+		var t entity.Transaction
+
+		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.City, &t.Total, &t.Status); err != nil {
 			return nil, err
 		}
-		orderRows, err := storage.db.QueryxContext(ctx, orderSql, transaction.Id)
+
+		orderRows, err := storage.db.QueryxContext(ctx, orderSql, t.Id)
 		if err != nil {
 			return nil, err
 		}
 
 		for orderRows.Next() {
-			var order entity.Order
-			_ = orderRows.Scan(&order.Id, &order.Product_Id, pq.Array(&order.Topping_Ids), &order.Price, &order.Qty)
-			_ = storage.db.QueryRowxContext(ctx, productSql, order.Product_Id).StructScan(&order.OrderProduct)
-			for _, v := range order.Topping_Ids {
-				wg.Add(1)
-				go func(v int64) {
-					defer wg.Done()
-					var topping entity.OrderTopping
-					if err = storage.db.QueryRowxContext(ctx, toppingSql, v).StructScan(&topping); err != nil {
-						return
-					}
-					order.Toppings = append(order.Toppings, topping)
-				}(v)
-				wg.Wait()
+			var o entity.Order
+			if err = orderRows.Scan(&o.Id, &o.Product_Id, pq.Array(&o.Topping_Ids), &o.Price, &o.Qty); err != nil {
+				return nil, err
 			}
-			transaction.Orders = append(transaction.Orders, order)
+			if err = storage.db.QueryRowxContext(ctx, productSql, o.Product_Id).StructScan(&o.OrderProduct); err != nil {
+				return nil, err
+			}
+			for _, v := range o.Topping_Ids {
+				var topping entity.OrderTopping
+				if err = storage.db.QueryRowxContext(ctx, toppingSql, v).Scan(&topping.Id, &topping.Name); err != nil {
+					return nil, err
+				}
+				o.Toppings = append(o.Toppings, topping)
+			}
+			t.Orders = append(t.Orders, o)
 		}
-		transactions = append(transactions, transaction)
+		transactions = append(transactions, t)
 	}
 
 	return transactions, nil
 }
 
 func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID int) ([]entity.Transaction, error) {
-	sql, _, _ := sq.Select("t.id", "t.name", "t.address", "t.postal_code", "t.city", "t.total", "t.status",
-		"o.id", "o.product_id", "o.topping_id", "o.price", "o.qty").From("transactions AS t, orders AS o").
-		Where("user_id=$1 AND t.id = o.id").ToSql()
-
-	productSql, _, _ := sq.Select("name", "image").From("products").Where("id=$1").ToSql()
-	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id=$1").ToSql()
+	sql, _, _ := sq.Select("id", "name", "address", "phone", "postal_code", "city", "total", "status").
+		From("transactions").Where("user_id=$1").ToSql()
 
 	var transactions []entity.Transaction
-
 	rows, err := storage.db.QueryxContext(ctx, sql, userID)
 	if err != nil {
 		return nil, err
@@ -102,23 +93,33 @@ func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID
 
 	for rows.Next() {
 		var t entity.Transaction
-		var o entity.Order
-		var topping entity.OrderTopping
 
-		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.PostalCode, &t.City, &t.Total, &t.Status,
-			&o.Id, &o.Product_Id, pq.Array(&o.Topping_Ids), &o.Price, &o.Qty); err != nil {
+		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.City, &t.Total, &t.Status); err != nil {
 			return nil, err
 		}
-		if err = storage.db.QueryRowxContext(ctx, productSql, o.Product_Id).StructScan(&o.OrderProduct); err != nil {
+
+		orderRows, err := storage.db.QueryxContext(ctx, orderSql, t.Id)
+		if err != nil {
 			return nil, err
 		}
-		for _, v := range o.Topping_Ids {
-			if err = storage.db.QueryRowxContext(ctx, toppingSql, v).StructScan(&topping); err != nil {
+
+		for orderRows.Next() {
+			var o entity.Order
+			if err = orderRows.Scan(&o.Id, &o.Product_Id, pq.Array(&o.Topping_Ids), &o.Price, &o.Qty); err != nil {
 				return nil, err
 			}
-			o.Toppings = append(o.Toppings, topping)
+			if err = storage.db.QueryRowxContext(ctx, productSql, o.Product_Id).StructScan(&o.OrderProduct); err != nil {
+				return nil, err
+			}
+			for _, v := range o.Topping_Ids {
+				var topping entity.OrderTopping
+				if err = storage.db.QueryRowxContext(ctx, toppingSql, v).Scan(&topping.Id, &topping.Name); err != nil {
+					return nil, err
+				}
+				o.Toppings = append(o.Toppings, topping)
+			}
+			t.Orders = append(t.Orders, o)
 		}
-		t.Orders = append(t.Orders, o)
 		transactions = append(transactions, t)
 	}
 
@@ -126,7 +127,8 @@ func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID
 }
 
 func (storage *transactionRepo) FindTransactionByID(ctx context.Context, id int) (*entity.Transaction, error) {
-	sql, _, _ := sq.Select("id", "name", "address", "postal_code", "city", "total", "status").From("transactions").Where("id=$1").ToSql()
+	sql, _, _ := sq.Select("id", "name", "address", "phone", "postal_code", "city", "total", "status").From("transactions").Where("id=$1").ToSql()
+
 	var transaction entity.Transaction
 	if err := storage.db.QueryRowxContext(ctx, sql, id).StructScan(&transaction); err != nil {
 		return nil, err
