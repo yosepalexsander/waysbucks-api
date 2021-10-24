@@ -2,9 +2,9 @@ package handler
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/yosepalexsander/waysbucks-api/entity"
@@ -219,17 +219,15 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request)  {
 	}
 	
 	if err := s.UserUseCase.ValidatePassword(user.Password, body.Password); err != nil {
-		log.Println(err)
 		badRequest(w, "credential is not valid")
     return
 	}
 
 	tokenString, tokenErr := helper.GenerateToken(user)
 	if tokenErr != nil {
-		log.Println(tokenErr)
+		internalServerError(w)
 		return
 	}
-
 	responseStruct := response{
 		commonResponse: commonResponse{
 			Message: "login success",
@@ -240,7 +238,9 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request)  {
 			Token: tokenString,
 		},
 	}
-
+	cookie := http.Cookie{Name: "token",Value:tokenString,Expires:time.Now().AddDate(0,0,1)}
+	http.SetCookie(w, &cookie)
+	
 	resBody, _ := json.Marshal(responseStruct)
 	responseOK(w, resBody)
 }

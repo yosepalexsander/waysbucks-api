@@ -7,10 +7,10 @@ cmd = "go build -o ./tmp/main ."
 bin = "tmp/main"
 
 # For windows
-full_bin = "start ./tmp/main"
+# full_bin = "start ./tmp/main"
 
 # For linux
-# full_bin = "APP_ENV=dev APP_USER=air ./tmp/main"
+full_bin = "APP_ENV=dev APP_USER=air ./tmp/main"
 
 include_ext = ["go"]
 

@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/yosepalexsander/waysbucks-api/helper"
@@ -17,21 +16,14 @@ var TokenCtxKey = &contextKey{name: "tokenPayload"}
 
 func Authentication(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authValue := strings.TrimSpace(r.Header.Get("Authorization"))
 
-		if (len(authValue) == 0) {
-			http.Error(w, "Authorization header is invalid", http.StatusBadRequest)
+		c, err := r.Cookie("token")
+		if err != nil || c.Value == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		bearerSplits := strings.Fields(authValue);
-
-		if (len(bearerSplits) != 2 || bearerSplits[0] != "Bearer") {
-			http.Error(w, "Authorization header is invalid", http.StatusBadRequest)
-			return
-		}
-
-		token, err := helper.VerifyToken(bearerSplits[1])
+		token, err := helper.VerifyToken(c.Value)
 
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
