@@ -3,6 +3,7 @@ package persistance
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -31,16 +32,15 @@ func NewTransactionMutator(db *sqlx.DB) repository.TransactionMutator {
 	return &transactionRepo{db: db}
 }
 
-var (
-	orderSql, _, _   = sq.Select("id", "product_id", "topping_id", "price", "qty").From("orders").Where("transaction_id=$1").ToSql()
-	productSql, _, _ = sq.Select("name", "image").From("products").Where("id=$1").ToSql()
-	toppingSql, _, _ = sq.Select("id", "name").From("toppings").Where("id=$1").ToSql()
-)
-
 func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.Transaction, error) {
-	sql, _, _ := sq.Select("id", "name", "address", "phone", "postal_code", "total", "status").From("transactions").ToSql()
-	var transactions []entity.Transaction
+	sql, _, _ := sq.Select("t.id", "t.name", "t.address", "t.phone", "t.postal_code", "t.total", "t.status", 
+	"json_agg(json_build_object('id', o.id, 'name', p.name,'image', p.image, 'topping_id', o.topping_id, 'price', o.price, 'qty', o.qty) ORDER BY o.id) AS order").
+		From("transactions AS t, orders AS o, products AS p").Where("t.id = o.transaction_id AND o.product_id = p.id").GroupBy("t.id").
+		OrderByClause("t.created_at DESC").ToSql()
+	
+	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id=$1").ToSql()
 
+	var transactions []entity.Transaction
 	rows, err := storage.db.QueryxContext(ctx, sql)
 	if err != nil {
 		return nil, err
@@ -48,43 +48,35 @@ func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.
 
 	for rows.Next() {
 		var t entity.Transaction
-
-		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.Total, &t.Status); err != nil {
+		var orderJSON []byte
+		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.Total, &t.Status, &orderJSON); err != nil {
 			return nil, err
 		}
-
-		orderRows, err := storage.db.QueryxContext(ctx, orderSql, t.Id)
-		if err != nil {
-			return nil, err
-		}
-
-		for orderRows.Next() {
-			var o entity.Order
-			if err = orderRows.Scan(&o.Id, &o.Product_Id, pq.Array(&o.Topping_Ids), &o.Price, &o.Qty); err != nil {
-				return nil, err
-			}
-			if err = storage.db.QueryRowxContext(ctx, productSql, o.Product_Id).StructScan(&o.OrderProduct); err != nil {
-				return nil, err
-			}
-			for _, v := range o.Topping_Ids {
+		_ = json.Unmarshal(orderJSON, &t.Orders)
+		for i := range t.Orders {
+			for _, v := range t.Orders[i].Topping_Ids {
 				var topping entity.OrderTopping
 				if err = storage.db.QueryRowxContext(ctx, toppingSql, v).Scan(&topping.Id, &topping.Name); err != nil {
 					return nil, err
 				}
-				o.Toppings = append(o.Toppings, topping)
+
+				t.Orders[i].Toppings = append(t.Orders[i].Toppings, topping)
 			}
-			t.Orders = append(t.Orders, o)
+			t.Orders[i].Topping_Ids = nil
 		}
 		transactions = append(transactions, t)
 	}
-
 	return transactions, nil
 }
 
 func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID int) ([]entity.Transaction, error) {
-	sql, _, _ := sq.Select("id", "name", "address", "phone", "postal_code", "total", "status").
-		From("transactions").Where("user_id=$1").ToSql()
-
+	sql, _, _ := sq.Select("t.id", "t.name", "t.address", "t.phone", "t.postal_code", "t.total", "t.status", 
+	"json_agg(json_build_object('id', o.id, 'name', p.name,'image', p.image, 'topping_id', o.topping_id, 'price', o.price, 'qty', o.qty) ORDER BY o.id) AS order").
+		From("transactions AS t, orders AS o, products AS p").Where("t.id = o.transaction_id AND t.user_id = $1 AND o.product_id = p.id").GroupBy("t.id").
+		OrderByClause("t.created_at DESC").ToSql()
+		
+	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id=$1").ToSql()
+	
 	var transactions []entity.Transaction
 	rows, err := storage.db.QueryxContext(ctx, sql, userID)
 	if err != nil {
@@ -93,72 +85,53 @@ func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID
 
 	for rows.Next() {
 		var t entity.Transaction
-
-		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.Total, &t.Status); err != nil {
+		var orderJSON []byte
+		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.Total, &t.Status, &orderJSON); err != nil {
 			return nil, err
 		}
-
-		orderRows, err := storage.db.QueryxContext(ctx, orderSql, t.Id)
-		if err != nil {
-			return nil, err
-		}
-
-		for orderRows.Next() {
-			var o entity.Order
-			if err = orderRows.Scan(&o.Id, &o.Product_Id, pq.Array(&o.Topping_Ids), &o.Price, &o.Qty); err != nil {
-				return nil, err
-			}
-			if err = storage.db.QueryRowxContext(ctx, productSql, o.Product_Id).StructScan(&o.OrderProduct); err != nil {
-				return nil, err
-			}
-			for _, v := range o.Topping_Ids {
+		_ = json.Unmarshal(orderJSON, &t.Orders)
+		for i := range t.Orders {
+			for _, v := range t.Orders[i].Topping_Ids {
 				var topping entity.OrderTopping
 				if err = storage.db.QueryRowxContext(ctx, toppingSql, v).Scan(&topping.Id, &topping.Name); err != nil {
 					return nil, err
 				}
-				o.Toppings = append(o.Toppings, topping)
+
+				t.Orders[i].Toppings = append(t.Orders[i].Toppings, topping)
 			}
-			t.Orders = append(t.Orders, o)
+			t.Orders[i].Topping_Ids = nil
 		}
 		transactions = append(transactions, t)
 	}
-
 	return transactions, nil
 }
 
 func (storage *transactionRepo) FindTransactionByID(ctx context.Context, id int) (*entity.Transaction, error) {
-	sql, _, _ := sq.Select("id", "name", "address", "phone", "postal_code", "total", "status").From("transactions").Where("id=$1").ToSql()
-
-	var transaction entity.Transaction
-	if err := storage.db.QueryRowxContext(ctx, sql, id).StructScan(&transaction); err != nil {
+	sql, _, _ := sq.Select("t.id", "t.name", "t.address", "t.phone", "t.postal_code", "t.total", "t.status", 
+		"json_agg(json_build_object('id', o.id, 'name', p.name,'image', p.image, 'topping_id', o.topping_id, 'price', o.price, 'qty', o.qty) ORDER BY o.id) AS order").
+		From("transactions AS t, orders AS o, products AS p").Where("t.id = $1 AND t.id = o.transaction_id AND o.product_id = p.id").GroupBy("t.id").
+		OrderByClause("t.created_at DESC").ToSql()
+	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id=$1").ToSql()
+	
+	var t entity.Transaction
+	var orderJSON []byte
+	row := storage.db.QueryRowxContext(ctx, sql, id)
+	if err := row.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.Total, &t.Status, &orderJSON); err != nil {
 		return nil, err
 	}
-
-	rows, err := storage.db.QueryxContext(ctx, orderSql, transaction.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	for rows.Next() {
-		var order entity.Order
-		if err = rows.Scan(&order.Id, &order.Product_Id, pq.Array(&order.Topping_Ids), &order.Price, &order.Qty); err != nil {
-			return nil, err
-		}
-		if err = storage.db.QueryRowxContext(ctx, productSql, order.Product_Id).StructScan(&order.OrderProduct); err != nil {
-			return nil, err
-		}
-
-		for _, v := range order.Topping_Ids {
+	_ = json.Unmarshal(orderJSON, &t.Orders)
+	for i := range t.Orders {
+		for _, v := range t.Orders[i].Topping_Ids {
 			var topping entity.OrderTopping
-			if err = storage.db.QueryRowxContext(ctx, toppingSql, v).StructScan(&topping); err != nil {
+			if err := storage.db.QueryRowxContext(ctx, toppingSql, v).Scan(&topping.Id, &topping.Name); err != nil {
 				return nil, err
 			}
 
-			order.Toppings = append(order.Toppings, topping)
+			t.Orders[i].Toppings = append(t.Orders[i].Toppings, topping)
 		}
-		transaction.Orders = append(transaction.Orders, order)
+		t.Orders[i].Topping_Ids = nil
 	}
-	return &transaction, err
+	return &t, nil
 }
 
 func (storage *transactionRepo) UpdateTransaction(ctx context.Context, id int, data map[string]interface{}) error {

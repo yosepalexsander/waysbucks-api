@@ -9,14 +9,14 @@ type Transaction struct {
 	Phone      string `db:"phone" json:"phone"`
 	Total      int    `db:"total" json:"total"`
 	Status     string `db:"status" json:"status"`
-	Orders     []Order `db:"orders" json:"orders"`
+	Orders     []Order `json:"orders"`
 }
 
 type Order struct {
 	Id             int     `db:"id" json:"id"`
 	Transaction_Id int     `db:"transaction_id" json:"-"`
-	Product_Id     int     `db:"product_id" json:"-"`
-	Topping_Ids    []int64 `db:"topping_id" json:"-"`
+	Product_Id     int     `db:"product_id" json:"product_id,omitempty"`
+	Topping_Ids    []int64 `db:"topping_id" json:"topping_id,omitempty"`
 	OrderProduct
 	Price    int `db:"price" json:"price"`
 	Qty      int `db:"qty" json:"qty"`

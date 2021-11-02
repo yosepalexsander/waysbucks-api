@@ -86,13 +86,13 @@ func (u *TransactionUseCase) GetDetailTransaction(ctx context.Context, id int) (
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	for _, order := range transaction.Orders {
-		imageUrl, err := thirdparty.GetImageUrl(ctx, order.Image)
+	for i := range transaction.Orders {
+		imageUrl, err := thirdparty.GetImageUrl(ctx, transaction.Orders[i].Image)
 		if err != nil {
 			cancel()
 			return nil, thirdparty.ErrServiceUnavailable
 		}
-		order.Image = imageUrl
+		transaction.Orders[i].Image = imageUrl
 	}
 	return transaction, err
 }
