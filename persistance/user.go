@@ -2,7 +2,6 @@ package persistance
 
 import (
 	"context"
-	"log"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -42,7 +41,6 @@ func (storage UserRepo) FindUserById(ctx context.Context, id int) (*entity.User,
 	err := storage.DB.QueryRowxContext(ctx, sql, id).StructScan(&user)
 
 	if err != nil {
-		log.Println(err)
 		return &user, err
 	}
 	
@@ -73,7 +71,6 @@ func (storage UserRepo) SaveUser(ctx context.Context, user entity.User) error {
 	_, err := storage.DB.ExecContext(ctx, sql, args...)
 
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 	

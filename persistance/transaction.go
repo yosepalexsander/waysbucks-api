@@ -38,7 +38,7 @@ var (
 )
 
 func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.Transaction, error) {
-	sql, _, _ := sq.Select("id", "name", "address", "phone", "postal_code", "city", "total", "status").From("transactions").ToSql()
+	sql, _, _ := sq.Select("id", "name", "address", "phone", "postal_code", "total", "status").From("transactions").ToSql()
 	var transactions []entity.Transaction
 
 	rows, err := storage.db.QueryxContext(ctx, sql)
@@ -49,7 +49,7 @@ func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.
 	for rows.Next() {
 		var t entity.Transaction
 
-		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.City, &t.Total, &t.Status); err != nil {
+		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.Total, &t.Status); err != nil {
 			return nil, err
 		}
 
@@ -82,7 +82,7 @@ func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.
 }
 
 func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID int) ([]entity.Transaction, error) {
-	sql, _, _ := sq.Select("id", "name", "address", "phone", "postal_code", "city", "total", "status").
+	sql, _, _ := sq.Select("id", "name", "address", "phone", "postal_code", "total", "status").
 		From("transactions").Where("user_id=$1").ToSql()
 
 	var transactions []entity.Transaction
@@ -94,7 +94,7 @@ func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID
 	for rows.Next() {
 		var t entity.Transaction
 
-		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.City, &t.Total, &t.Status); err != nil {
+		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.Total, &t.Status); err != nil {
 			return nil, err
 		}
 
@@ -127,7 +127,7 @@ func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID
 }
 
 func (storage *transactionRepo) FindTransactionByID(ctx context.Context, id int) (*entity.Transaction, error) {
-	sql, _, _ := sq.Select("id", "name", "address", "phone", "postal_code", "city", "total", "status").From("transactions").Where("id=$1").ToSql()
+	sql, _, _ := sq.Select("id", "name", "address", "phone", "postal_code", "total", "status").From("transactions").Where("id=$1").ToSql()
 
 	var transaction entity.Transaction
 	if err := storage.db.QueryRowxContext(ctx, sql, id).StructScan(&transaction); err != nil {
@@ -231,8 +231,8 @@ func (sct *sqlConnTx) CreateTransaction(ctx context.Context, tx entity.Transacti
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	var id int
-	sql, args, _ := psql.Insert("transactions").Columns("user_id", "name", "address", "postal_code", "city", "phone", "total", "status").
-		Values(tx.User_Id, tx.Name, tx.Address, tx.PostalCode, tx.City, tx.Phone, tx.Total, tx.Status).Suffix("RETURNING id").ToSql()
+	sql, args, _ := psql.Insert("transactions").Columns("user_id", "name", "address", "postal_code", "phone", "total", "status").
+		Values(tx.User_Id, tx.Name, tx.Address, tx.PostalCode, tx.Phone, tx.Total, tx.Status).Suffix("RETURNING id").ToSql()
 
 	err := sct.db.QueryRowContext(ctx, sql, args...).Scan(&id)
 

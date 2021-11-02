@@ -2,12 +2,11 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
-	"github.com/yosepalexsander/waysbucks-api/helper"
 	"github.com/yosepalexsander/waysbucks-api/repository"
+	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -20,6 +19,7 @@ type TransactionUseCase struct {
 func NewTransactionUseCase(f repository.TransactionFinder, t repository.TransactionTx, m repository.TransactionMutator) TransactionUseCase {
 	return TransactionUseCase{f, t, m}
 }
+
 func (u *TransactionUseCase) GetTransactions(ctx context.Context) ([]entity.Transaction, error) {
 	transactions, err := u.Finder.FindTransactions(ctx)
 	if err != nil {
@@ -31,7 +31,7 @@ func (u *TransactionUseCase) GetTransactions(ctx context.Context) ([]entity.Tran
 		t := t
 		g.Go(func() error {
 			for i := range t.Orders {
-				imageUrl, err := helper.GetImageUrl(ctx, t.Orders[i].Image)
+				imageUrl, err := thirdparty.GetImageUrl(ctx, t.Orders[i].Image)
 				if err != nil {
 					return err
 				}
@@ -43,7 +43,7 @@ func (u *TransactionUseCase) GetTransactions(ctx context.Context) ([]entity.Tran
 	}
 
 	if err := g.Wait(); err != nil {
-		return nil, errors.New("object storage service unavailable")
+		return nil, thirdparty.ErrServiceUnavailable
 	}
 
 	return transactions, nil
@@ -60,7 +60,7 @@ func (u *TransactionUseCase) GetUserTransactions(ctx context.Context, userID int
 		t := t
 		g.Go(func() error {
 			for i := range t.Orders {
-				imageUrl, err := helper.GetImageUrl(ctx, t.Orders[i].Image)
+				imageUrl, err := thirdparty.GetImageUrl(ctx, t.Orders[i].Image)
 				if err != nil {
 					return err
 				}
@@ -71,7 +71,7 @@ func (u *TransactionUseCase) GetUserTransactions(ctx context.Context, userID int
 	}
 
 	if err := g.Wait(); err != nil {
-		return nil, errors.New("object storage service unavailable")
+		return nil, thirdparty.ErrServiceUnavailable
 	}
 
 	return transactions, nil
@@ -87,10 +87,10 @@ func (u *TransactionUseCase) GetDetailTransaction(ctx context.Context, id int) (
 	defer cancel()
 
 	for _, order := range transaction.Orders {
-		imageUrl, err := helper.GetImageUrl(ctx, order.Image)
+		imageUrl, err := thirdparty.GetImageUrl(ctx, order.Image)
 		if err != nil {
 			cancel()
-			return nil, errors.New("object storage service unavailable")
+			return nil, thirdparty.ErrServiceUnavailable
 		}
 		order.Image = imageUrl
 	}
@@ -119,7 +119,6 @@ func transactionFromRequest(r entity.TransactionRequest) entity.TransactionTxPar
 			Name:       r.Name,
 			Address:    r.Address,
 			PostalCode: r.PostalCode,
-			City:       r.City,
 			Phone:      r.Phone,
 			Total:      r.Total,
 			Status:     r.Status,

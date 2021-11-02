@@ -3,11 +3,10 @@ package usecase
 import (
 	"context"
 	"database/sql"
-	"errors"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
-	"github.com/yosepalexsander/waysbucks-api/helper"
 	"github.com/yosepalexsander/waysbucks-api/repository"
+	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -29,7 +28,7 @@ func (u *CartUseCase) GetUserCarts(ctx context.Context, userID int) ([]entity.Ca
 	for i := range carts {
 		i := i
 		g.Go(func() error {
-			imageUrl, err := helper.GetImageUrl(ctx, carts[i].Product.Image)
+			imageUrl, err := thirdparty.GetImageUrl(ctx, carts[i].Product.Image)
 			if err == nil && imageUrl != "" {
 				carts[i].Product.Image = imageUrl
 				carts[i].Product_Id = 0
@@ -40,7 +39,7 @@ func (u *CartUseCase) GetUserCarts(ctx context.Context, userID int) ([]entity.Ca
 	}
 
 	if err := g.Wait(); err != nil {
-		return nil, errors.New("object storage service unavailable")
+		return nil, thirdparty.ErrServiceUnavailable
 	}
 	return carts, nil
 }

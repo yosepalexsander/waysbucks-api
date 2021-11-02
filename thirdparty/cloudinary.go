@@ -1,4 +1,4 @@
-package helper
+package thirdparty
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	ErrorInvalidFileExtension error = errors.New("invalid file extension")
+	ErrServiceUnavailable error = errors.New("object storage service unavailable")
 )
 
 func UploadFile(ctx context.Context, file multipart.File, filename string) error {

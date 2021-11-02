@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
-	"github.com/yosepalexsander/waysbucks-api/helper"
 	"github.com/yosepalexsander/waysbucks-api/repository"
+	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 )
 
 type ProductUseCase struct {
@@ -24,11 +24,11 @@ func (u *ProductUseCase) GetProducts(ctx context.Context) ([]entity.Product, err
 	}
 	var wg sync.WaitGroup
 	
-	wg.Add(len(products))
 	for i := range products {
+		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			imageUrl, _ := helper.GetImageUrl(ctx, products[i].Image)
+			imageUrl, _ := thirdparty.GetImageUrl(ctx, products[i].Image)
 			products[i].Image = imageUrl
 		}(i)
 	}
@@ -39,7 +39,16 @@ func (u *ProductUseCase) GetProducts(ctx context.Context) ([]entity.Product, err
 }
 
 func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity.Product, error) {
-	return u.ProductRepository.FindProduct(ctx, productID)
+	product, err := u.ProductRepository.FindProduct(ctx, productID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	imageUrl, _ := thirdparty.GetImageUrl(ctx, product.Image)
+	product.Image = imageUrl
+	
+	return product, nil
 }
 
 func (u *ProductUseCase) CreateProduct(ctx context.Context, product entity.Product) error {
@@ -66,11 +75,11 @@ func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductToppi
 	
 	var wg sync.WaitGroup
 
-	wg.Add(len(toppings))
 	for i := range toppings {
+		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			imageUrl, _ := helper.GetImageUrl(ctx, toppings[i].Image)
+			imageUrl, _ := thirdparty.GetImageUrl(ctx, toppings[i].Image)
 			toppings[i].Image = imageUrl
 		}(i)
 	}
@@ -85,7 +94,7 @@ func (u *ProductUseCase) GetTopping(ctx context.Context, id int) (*entity.Produc
 
 func (u *ProductUseCase) CreateTopping(ctx context.Context, topping entity.ProductTopping) error {
 	if err := u.ToppingRepository.SaveTopping(ctx, topping); err != nil {
-		_ = helper.RemoveFile(ctx, topping.Name)
+		_ = thirdparty.RemoveFile(ctx, topping.Name)
 		return err
 	}
 	return nil
@@ -101,14 +110,14 @@ func (u *ProductUseCase) UpdateImage(ctx context.Context, file multipart.File, o
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		if err := helper.UploadFile(ctx, file, newName); err != nil  {
+		if err := thirdparty.UploadFile(ctx, file, newName); err != nil  {
 			uploadErr = err
 			return
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		if err := helper.RemoveFile(ctx, oldName); err != nil {
+		if err := thirdparty.RemoveFile(ctx, oldName); err != nil {
 			uploadErr = err
 			return
 		}

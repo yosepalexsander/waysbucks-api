@@ -6,11 +6,10 @@ type Transaction struct {
 	Name       string `db:"name" json:"name"`
 	Address    string `db:"address" json:"address"`
 	PostalCode int    `db:"postal_code" json:"postal_code"`
-	City       string `db:"city" json:"city"`
 	Phone      string `db:"phone" json:"phone"`
 	Total      int    `db:"total" json:"total"`
 	Status     string `db:"status" json:"status"`
-	Orders     []Order
+	Orders     []Order `db:"orders" json:"orders"`
 }
 
 type Order struct {
@@ -21,7 +20,7 @@ type Order struct {
 	OrderProduct
 	Price    int `db:"price" json:"price"`
 	Qty      int `db:"qty" json:"qty"`
-	Toppings []OrderTopping
+	Toppings []OrderTopping `json:"toppings"`
 }
 
 type TransactionTxParams struct {
@@ -52,9 +51,8 @@ type TransactionRequest struct {
 	Name       string         `json:"name" validate:"required"`
 	Address    string         `json:"address" validate:"required"`
 	PostalCode int            `json:"postal_code" validate:"required"`
-	City       string         `json:"city" validate:"required"`
 	Phone      string         `json:"phone" validate:"required"`
 	Total      int            `json:"total" validate:"required"`
 	Status     string         `json:"status" validate:"required"`
-	Order      []OrderRequest `json:"orders"`
+	Order      []OrderRequest `json:"orders" validate:"required"`
 }

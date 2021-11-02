@@ -13,6 +13,7 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/handler/middleware"
 	"github.com/yosepalexsander/waysbucks-api/helper"
+	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"github.com/yosepalexsander/waysbucks-api/usecase"
 )
 
@@ -87,6 +88,7 @@ func (s *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	if err := helper.ValidateImageFile(header.Filename); err != nil {
 		badRequest(w, "upload only for image")
+		return
 	}
 	filename := strings.Split(header.Filename, ".")[0] + helper.RandString(15)
 
@@ -102,7 +104,7 @@ func (s *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := helper.UploadFile(ctx, file, filename); err != nil {
+	if err := thirdparty.UploadFile(ctx, file, filename); err != nil {
 		internalServerError(w)
 		return
 	}
@@ -125,8 +127,8 @@ func (s *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	body := make(map[string]interface{})
 
 	if mediatype == "multipart/form-data" {
-		if err := r.ParseMultipartForm(10 << 20); err != nil {
-			badRequest(w, "maximum upload size is 10 MB")
+		if err := r.ParseMultipartForm(5 << 20); err != nil {
+			badRequest(w, "maximum upload size is 5 MB")
 			return
 		}
 
@@ -188,7 +190,7 @@ func (s *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	productID, _ := strconv.Atoi(chi.URLParam(r, "productID"))
 
 	if _, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
-		product, err := s.ProductUseCase.GetProduct(ctx, productID)
+		product, err := s.ProductUseCase.ProductRepository.FindProduct(ctx, productID)
 		if err != nil {
 			notFound(w)
 			return
@@ -198,8 +200,8 @@ func (s *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 			internalServerError(w)
 			return
 		}
-
-		if err := helper.RemoveFile(ctx, product.Image); err != nil {
+		
+		if err := thirdparty.RemoveFile(ctx, product.Image); err != nil {
 			internalServerError(w)
 			return
 		}
@@ -278,7 +280,7 @@ func (s *ProductHandler) CreateTopping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := helper.UploadFile(ctx, file, filename); err != nil {
+	if err := thirdparty.UploadFile(ctx, file, filename); err != nil {
 		internalServerError(w)
 		return
 	}
@@ -312,12 +314,6 @@ func (s *ProductHandler) UpdateTopping(w http.ResponseWriter, r *http.Request) {
 		}
 		defer file.Close()
 
-		topping, err := s.ProductUseCase.GetTopping(ctx, toppingID)
-		if err != nil {
-			internalServerError(w)
-			return
-		}
-
 		if err := helper.ValidateImageFile(header.Filename); err != nil {
 			badRequest(w, "upload only for image")
 			return
@@ -325,6 +321,12 @@ func (s *ProductHandler) UpdateTopping(w http.ResponseWriter, r *http.Request) {
 
 		filename := strings.Split(header.Filename, ".")[0] + helper.RandString(15)
 		body["image"] = filename
+
+		topping, err := s.ProductUseCase.GetTopping(ctx, toppingID)
+		if err != nil {
+			internalServerError(w)
+			return
+		}
 
 		if err := s.ProductUseCase.UpdateTopping(ctx, toppingID, body); err != nil {
 			internalServerError(w)
@@ -374,7 +376,7 @@ func (s *ProductHandler) DeleteTopping(w http.ResponseWriter, r *http.Request) {
 			internalServerError(w)
 			return
 		}
-		if err := helper.RemoveFile(ctx, topping.Image); err != nil {
+		if err := thirdparty.RemoveFile(ctx, topping.Image); err != nil {
 			internalServerError(w)
 			return
 		}

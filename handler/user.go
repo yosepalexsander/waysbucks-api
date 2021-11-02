@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/yosepalexsander/waysbucks-api/entity"
@@ -196,6 +195,7 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request)  {
 			Password string `json:"password"`
 		}
 		payload struct {
+			Id int `json:"id"`
 			Name string `json:"name"`
 			Email string `json:"email"`
 			Token string `json:"token"`
@@ -233,13 +233,12 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request)  {
 			Message: "login success",
 		},
 		Payload: payload{
+			Id: user.Id,
 			Name: user.Name,
 			Email: body.Email,
 			Token: tokenString,
 		},
 	}
-	cookie := http.Cookie{Name: "token",Value:tokenString,Expires:time.Now().AddDate(0,0,1)}
-	http.SetCookie(w, &cookie)
 	
 	resBody, _ := json.Marshal(responseStruct)
 	responseOK(w, resBody)

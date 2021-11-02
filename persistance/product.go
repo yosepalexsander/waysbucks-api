@@ -2,7 +2,6 @@ package persistance
 
 import (
 	"context"
-	"log"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -27,7 +26,6 @@ func (storage ProductRepo) FindProducts(ctx context.Context) ([]entity.Product, 
 	}
 
 	if err != nil {
-		log.Println(err)
 		return nil, err
 	}
 	

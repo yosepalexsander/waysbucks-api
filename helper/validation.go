@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"errors"
 	"reflect"
 	"regexp"
 	"strings"
@@ -8,6 +9,10 @@ import (
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
+)
+
+var (
+	ErrorInvalidFileExtension error = errors.New("invalid file extension")
 )
 
 func Validate(value interface{}) (bool, string)  {

@@ -35,12 +35,13 @@ func (s *TransactionHandler) CreateTransaction(w http.ResponseWriter, r *http.Re
 		badRequest(w, "invalid request")
 		return
 	}
-	log.Println(body)
+	
 	body.User_Id = claims.UserID
 	if valid, msg := helper.Validate(body); !valid {
 		badRequest(w, msg)
 	}
 	if err := s.TransactionUseCase.MakeTransaction(ctx, body); err != nil {
+		log.Println(err)
 		internalServerError(w)
 		return
 	}

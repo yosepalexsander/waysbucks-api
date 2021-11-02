@@ -64,7 +64,6 @@ CREATE TABLE transactions (
   name VARCHAR(100) NOT NULL,
   phone VARCHAR(15) NOT NULL,
   address VARCHAR(255) NOT NULL,
-  city VARCHAR(100) NOT NULL,
   postal_code INT NOT NULL,
   total INT NOT NULL,
   status VARCHAR(50),
