@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
+	"github.com/yosepalexsander/waysbucks-api/helper"
 	"github.com/yosepalexsander/waysbucks-api/repository"
 	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"golang.org/x/sync/errgroup"
@@ -77,7 +78,7 @@ func (u *TransactionUseCase) GetUserTransactions(ctx context.Context, userID int
 	return transactions, nil
 }
 
-func (u *TransactionUseCase) GetDetailTransaction(ctx context.Context, id int) (*entity.Transaction, error) {
+func (u *TransactionUseCase) GetDetailTransaction(ctx context.Context, id string) (*entity.Transaction, error) {
 	transaction, err := u.Finder.FindTransactionByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -97,12 +98,52 @@ func (u *TransactionUseCase) GetDetailTransaction(ctx context.Context, id int) (
 	return transaction, err
 }
 
-func (u *TransactionUseCase) MakeTransaction(ctx context.Context, request entity.TransactionRequest) error {
+func (u *TransactionUseCase) MakeTransaction(ctx context.Context, request entity.TransactionRequest) (*entity.Transaction, error) {
 	transaction := transactionFromRequest(request)
-	return u.Transactioner.OrderTx(ctx, transaction)
+	if err := u.orderTx(ctx, transaction); err != nil {
+		return nil, err
+	}
+	newTransaction, err := u.GetDetailTransaction(ctx, transaction.Transaction.Id)
+	newTransaction.Email = transaction.Transaction.Email
+	newTransaction.ServiceFee = transaction.Transaction.ServiceFee
+	if err != nil {
+		return nil, err
+	}
+
+	return newTransaction, nil
 }
 
-func (u *TransactionUseCase) UpdateTransaction(ctx context.Context, id int, data map[string]interface{}) error {
+func (u *TransactionUseCase) orderTx(ctx context.Context, arg entity.TransactionTxParams) error {
+	txErr := u.Transactioner.ExecTx(ctx, func(tx repository.Transactioner) error {
+		var err error
+
+		id, err := tx.CreateTransaction(ctx, arg.Transaction)
+		if err != nil {
+			return err
+		}
+		for i := range arg.Order {
+			arg.Order[i].Transaction_Id = id
+			err := tx.CreateOrder(ctx, arg.Order[i])
+			if err != nil {
+				return err
+			}
+			err = tx.DeleteCart(ctx, arg.Order[i].Product_Id, arg.Transaction.User_Id)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if txErr != nil {
+		return txErr
+	}
+
+	return nil
+}
+
+func (u *TransactionUseCase) UpdateTransaction(ctx context.Context, id string, data map[string]interface{}) error {
 	return u.Mutator.UpdateTransaction(ctx, id, data)
 }
 
@@ -115,12 +156,16 @@ func transactionFromRequest(r entity.TransactionRequest) entity.TransactionTxPar
 
 	return entity.TransactionTxParams{
 		Transaction: entity.Transaction{
+			Id:         "ORDER-" + helper.RandString(20),
 			User_Id:    r.User_Id,
 			Name:       r.Name,
+			Email:      r.Email,
 			Address:    r.Address,
+			City:       r.City,
 			PostalCode: r.PostalCode,
 			Phone:      r.Phone,
 			Total:      r.Total,
+			ServiceFee: r.ServiceFee,
 			Status:     r.Status,
 		},
 		Order: orders,

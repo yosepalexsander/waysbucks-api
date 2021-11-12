@@ -3,14 +3,15 @@ package handler
 import (
 	"database/sql"
 	"encoding/json"
-	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/midtrans/midtrans-go/coreapi"
+	"github.com/midtrans/midtrans-go/snap"
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/handler/middleware"
 	"github.com/yosepalexsander/waysbucks-api/helper"
+	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"github.com/yosepalexsander/waysbucks-api/usecase"
 )
 
@@ -23,6 +24,10 @@ func NewTransactionHandler(u usecase.TransactionUseCase) TransactionHandler {
 }
 
 func (s *TransactionHandler) CreateTransaction(w http.ResponseWriter, r *http.Request) {
+	type response struct {
+		commonResponse
+		Payload *snap.Response `json:"payload"`
+	}
 	ctx := r.Context()
 	claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims)
 	if !ok {
@@ -35,18 +40,24 @@ func (s *TransactionHandler) CreateTransaction(w http.ResponseWriter, r *http.Re
 		badRequest(w, "invalid request")
 		return
 	}
-	
+
 	body.User_Id = claims.UserID
 	if valid, msg := helper.Validate(body); !valid {
 		badRequest(w, msg)
 	}
-	if err := s.TransactionUseCase.MakeTransaction(ctx, body); err != nil {
-		log.Println(err)
+
+	createdTransaction, err := s.TransactionUseCase.MakeTransaction(ctx, body)
+	if err != nil {
 		internalServerError(w)
 		return
 	}
-	resp, _ := json.Marshal(commonResponse{
-		Message: "resources has successfully created",
+	snapRes := thirdparty.CreateTransaction(createdTransaction)
+
+	resp, _ := json.Marshal(response{
+		commonResponse: commonResponse{
+			Message: "resources has successfully created",
+		},
+		Payload: snapRes,
 	})
 	responseOK(w, resp)
 }
@@ -118,7 +129,7 @@ func (s *TransactionHandler) GetTransaction(w http.ResponseWriter, r *http.Reque
 	}
 
 	ctx := r.Context()
-	transactionID, _ := strconv.Atoi(chi.URLParam(r, "transactionID"))
+	transactionID := chi.URLParam(r, "transactionID")
 
 	transaction, err := s.TransactionUseCase.GetDetailTransaction(ctx, transactionID)
 	if err != nil {
@@ -141,7 +152,7 @@ func (s *TransactionHandler) GetTransaction(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *TransactionHandler) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
-	transactionID, _ := strconv.Atoi(chi.URLParam(r, "transactionID"))
+	transactionID := chi.URLParam(r, "transactionID")
 
 	var data map[string]interface{}
 
@@ -160,4 +171,39 @@ func (s *TransactionHandler) UpdateTransaction(w http.ResponseWriter, r *http.Re
 	})
 
 	responseOK(w, resp)
+}
+
+// Catch notification from midtrans request POST after
+func (s *TransactionHandler) PaymentNotification(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var body coreapi.TransactionStatusResponse
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		badRequest(w, "invalid request")
+		return
+	}
+
+	updateStatus := func(status string) {
+		data := make(map[string]interface{})
+		data["status"] = status
+		if err := s.TransactionUseCase.UpdateTransaction(ctx, body.TransactionID, data); err != nil {
+			internalServerError(w)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+
+	if body.TransactionStatus == "capture" {
+		if body.FraudStatus == "challange" {
+			updateStatus("pending")
+		} else if body.FraudStatus == "accept" {
+			updateStatus("success")
+		}
+	} else if body.TransactionStatus == "settlement" {
+		updateStatus("success")
+	} else if body.TransactionStatus == "cancel" || body.TransactionStatus == "deny" || body.TransactionStatus == "expire" {
+		updateStatus("failure")
+	} else if body.TransactionStatus == "pending" {
+		updateStatus("pending")
+	}
 }

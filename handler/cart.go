@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/handler/middleware"
 	"github.com/yosepalexsander/waysbucks-api/helper"
+	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"github.com/yosepalexsander/waysbucks-api/usecase"
 )
 
@@ -26,8 +29,12 @@ func (s *CartHandler) GetUserCarts(w http.ResponseWriter, r *http.Request) {
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
 		carts, err := s.CartUseCase.GetUserCarts(ctx, claims.UserID)
 		if err != nil {
-			if err.Error() == "object storage service unavailable" {
-				serviceUnavailable(w, "error: "+err.Error())
+			if err == thirdparty.ErrServiceUnavailable {
+				serviceUnavailable(w, "error: cloudinary service unavailable")
+				return
+			}
+			if err == sql.ErrNoRows {
+				notFound(w)
 				return
 			}
 			internalServerError(w)
@@ -100,6 +107,7 @@ func (s *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.CartUseCase.UpdateCart(ctx, cartId, claims.UserID, body); err != nil {
 		internalServerError(w)
+		log.Println(err)
 		return
 	}
 

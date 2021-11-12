@@ -33,11 +33,11 @@ func NewTransactionMutator(db *sqlx.DB) repository.TransactionMutator {
 }
 
 func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.Transaction, error) {
-	sql, _, _ := sq.Select("t.id", "t.name", "t.address", "t.phone", "t.postal_code", "t.total", "t.status", 
-	"json_agg(json_build_object('id', o.id, 'name', p.name,'image', p.image, 'topping_id', o.topping_id, 'price', o.price, 'qty', o.qty) ORDER BY o.id) AS order").
+	sql, _, _ := sq.Select("t.id", "t.name", "t.address", "t.phone", "t.city", "t.postal_code", "t.total", "t.status",
+		"json_agg(json_build_object('id', o.id, 'name', p.name,'image', p.image, 'topping_id', o.topping_id, 'price', o.price, 'qty', o.qty) ORDER BY o.id) AS order").
 		From("transactions AS t, orders AS o, products AS p").Where("t.id = o.transaction_id AND o.product_id = p.id").GroupBy("t.id").
 		OrderByClause("t.created_at DESC").ToSql()
-	
+
 	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id=$1").ToSql()
 
 	var transactions []entity.Transaction
@@ -49,7 +49,7 @@ func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.
 	for rows.Next() {
 		var t entity.Transaction
 		var orderJSON []byte
-		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.Total, &t.Status, &orderJSON); err != nil {
+		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.City, &t.PostalCode, &t.Total, &t.Status, &orderJSON); err != nil {
 			return nil, err
 		}
 		_ = json.Unmarshal(orderJSON, &t.Orders)
@@ -70,13 +70,13 @@ func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.
 }
 
 func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID int) ([]entity.Transaction, error) {
-	sql, _, _ := sq.Select("t.id", "t.name", "t.address", "t.phone", "t.postal_code", "t.total", "t.status", 
-	"json_agg(json_build_object('id', o.id, 'name', p.name,'image', p.image, 'topping_id', o.topping_id, 'price', o.price, 'qty', o.qty) ORDER BY o.id) AS order").
+	sql, _, _ := sq.Select("t.id", "t.name", "t.address", "t.phone", "t.city", "t.postal_code", "t.total", "t.status",
+		"json_agg(json_build_object('id', o.id, 'name', p.name,'image', p.image, 'topping_id', o.topping_id, 'price', o.price, 'qty', o.qty) ORDER BY o.id) AS order").
 		From("transactions AS t, orders AS o, products AS p").Where("t.id = o.transaction_id AND t.user_id = $1 AND o.product_id = p.id").GroupBy("t.id").
 		OrderByClause("t.created_at DESC").ToSql()
-		
+
 	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id=$1").ToSql()
-	
+
 	var transactions []entity.Transaction
 	rows, err := storage.db.QueryxContext(ctx, sql, userID)
 	if err != nil {
@@ -86,7 +86,7 @@ func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID
 	for rows.Next() {
 		var t entity.Transaction
 		var orderJSON []byte
-		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.Total, &t.Status, &orderJSON); err != nil {
+		if err = rows.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.City, &t.PostalCode, &t.Total, &t.Status, &orderJSON); err != nil {
 			return nil, err
 		}
 		_ = json.Unmarshal(orderJSON, &t.Orders)
@@ -106,17 +106,17 @@ func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID
 	return transactions, nil
 }
 
-func (storage *transactionRepo) FindTransactionByID(ctx context.Context, id int) (*entity.Transaction, error) {
-	sql, _, _ := sq.Select("t.id", "t.name", "t.address", "t.phone", "t.postal_code", "t.total", "t.status", 
+func (storage *transactionRepo) FindTransactionByID(ctx context.Context, id string) (*entity.Transaction, error) {
+	sql, _, _ := sq.Select("t.id", "t.name", "t.address", "t.phone", "t.city", "t.postal_code", "t.total", "t.status",
 		"json_agg(json_build_object('id', o.id, 'name', p.name,'image', p.image, 'topping_id', o.topping_id, 'price', o.price, 'qty', o.qty) ORDER BY o.id) AS order").
 		From("transactions AS t, orders AS o, products AS p").Where("t.id = $1 AND t.id = o.transaction_id AND o.product_id = p.id").GroupBy("t.id").
 		OrderByClause("t.created_at DESC").ToSql()
 	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id=$1").ToSql()
-	
+
 	var t entity.Transaction
 	var orderJSON []byte
 	row := storage.db.QueryRowxContext(ctx, sql, id)
-	if err := row.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.PostalCode, &t.Total, &t.Status, &orderJSON); err != nil {
+	if err := row.Scan(&t.Id, &t.Name, &t.Address, &t.Phone, &t.City, &t.PostalCode, &t.Total, &t.Status, &orderJSON); err != nil {
 		return nil, err
 	}
 	_ = json.Unmarshal(orderJSON, &t.Orders)
@@ -134,7 +134,7 @@ func (storage *transactionRepo) FindTransactionByID(ctx context.Context, id int)
 	return &t, nil
 }
 
-func (storage *transactionRepo) UpdateTransaction(ctx context.Context, id int, data map[string]interface{}) error {
+func (storage *transactionRepo) UpdateTransaction(ctx context.Context, id string, data map[string]interface{}) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	sql, args, _ := psql.Update("transactions").SetMap(data).ToSql()
@@ -170,47 +170,17 @@ func (storage *transactionRepo) ExecTx(ctx context.Context, fn func(repository.T
 	return tx.Commit()
 }
 
-func (storage *transactionRepo) OrderTx(ctx context.Context, arg entity.TransactionTxParams) error {
-	txErr := storage.ExecTx(ctx, func(tx repository.Transactioner) error {
-		var err error
-
-		id, err := tx.CreateTransaction(ctx, arg.Transaction)
-		if err != nil {
-			return err
-		}
-		for i := range arg.Order {
-			arg.Order[i].Transaction_Id = id
-			err := tx.CreateOrder(ctx, arg.Order[i])
-			if err != nil {
-				return err
-			}
-			err = tx.DeleteCart(ctx, arg.Order[i].Product_Id, arg.Transaction.User_Id)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-
-	if txErr != nil {
-		return txErr
-	}
-
-	return nil
-}
-
-func (sct *sqlConnTx) CreateTransaction(ctx context.Context, tx entity.Transaction) (int, error) {
+func (sct *sqlConnTx) CreateTransaction(ctx context.Context, tx entity.Transaction) (string, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
-	var id int
-	sql, args, _ := psql.Insert("transactions").Columns("user_id", "name", "address", "postal_code", "phone", "total", "status").
-		Values(tx.User_Id, tx.Name, tx.Address, tx.PostalCode, tx.Phone, tx.Total, tx.Status).Suffix("RETURNING id").ToSql()
+	var id string
+	sql, args, _ := psql.Insert("transactions").Columns("id", "user_id", "name", "address", "city", "postal_code", "phone", "total", "status").
+		Values(tx.Id, tx.User_Id, tx.Name, tx.Address, tx.City, tx.PostalCode, tx.Phone, tx.Total, tx.Status).Suffix("RETURNING id").ToSql()
 
 	err := sct.db.QueryRowContext(ctx, sql, args...).Scan(&id)
 
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return id, nil
 }

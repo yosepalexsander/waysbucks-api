@@ -10,18 +10,18 @@ import (
 )
 
 type MyClaims struct {
-	UserID int 
+	UserID  int
 	IsAdmin bool
 	jwt.StandardClaims
 }
 
 func GenerateToken(user *entity.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, MyClaims{
-		UserID: user.Id,
+		UserID:  user.Id,
 		IsAdmin: user.IsAdmin,
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 3).Unix(),
-			Issuer: "Waysbucks",
+			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
+			Issuer:    "Waysbucks",
 		},
 	})
 
@@ -43,6 +43,6 @@ func VerifyToken(tokenString string) (*jwt.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return token, nil
 }

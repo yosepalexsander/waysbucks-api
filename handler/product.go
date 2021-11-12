@@ -219,7 +219,7 @@ func (s *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 func (s *ProductHandler) GetToppings(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
-		Payload []entity.ProductTopping
+		Payload []entity.ProductTopping `json:"payload"`
 	}
 
 	toppings, err := s.ProductUseCase.GetToppings(r.Context())

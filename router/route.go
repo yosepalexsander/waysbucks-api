@@ -72,5 +72,7 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 			r.Use(customMiddleware.Authentication)
 			r.Get("/", h.GetUserTransactions)
 		})
+
+		r.Post("/notification", h.PaymentNotification)
 	})
 }

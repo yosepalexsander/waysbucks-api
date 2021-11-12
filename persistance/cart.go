@@ -14,7 +14,7 @@ type CartRepo struct {
 }
 
 func (storage CartRepo) FindCarts(ctx context.Context, userID int) ([]entity.Cart, error) {
-	sql, _, _ := sq.Select("id", "product_id", "topping_id", "price", "qty").From("carts").Where("user_id=$1").ToSql()
+	sql, _, _ := sq.Select("id", "product_id", "topping_id", "price", "qty").From("carts").Where("user_id=$1").OrderByClause("id DESC").ToSql()
 	productSql, _, _ := sq.Select("id", "name", "image", "price").From("products").Where("id=$1").ToSql()
 	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id= $1").ToSql()
 

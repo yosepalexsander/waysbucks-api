@@ -19,14 +19,14 @@ func Authentication(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authValue := strings.TrimSpace(r.Header.Get("Authorization"))
 
-		if (len(authValue) == 0) {
+		if len(authValue) == 0 {
 			http.Error(w, "authorization header is invalid", http.StatusBadRequest)
 			return
 		}
 
-		bearerSplits := strings.Fields(authValue);
+		bearerSplits := strings.Fields(authValue)
 
-		if (len(bearerSplits) != 2 || bearerSplits[0] != "Bearer") {
+		if len(bearerSplits) != 2 || bearerSplits[0] != "Bearer" {
 			http.Error(w, "authorization header is invalid", http.StatusBadRequest)
 			return
 		}
@@ -38,12 +38,12 @@ func Authentication(next http.Handler) http.Handler {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
-			http.Error(w, "token is not valid anymore", http.StatusBadRequest)
+			http.Error(w, "token is not valid anymore", http.StatusUnauthorized)
 			return
 		}
-		
+
 		if !token.Valid {
-			http.Error(w, "token is not valid anymore", http.StatusBadRequest)
+			http.Error(w, "token is not valid anymore", http.StatusUnauthorized)
 			return
 		}
 

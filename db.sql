@@ -1,4 +1,4 @@
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   email VARCHAR(255) NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE users (
   CONSTRAINT users_email_unique UNIQUE (email)
 );
 
-CREATE TABLE user_address (
+CREATE TABLE IF NOT EXISTS user_address (
   id SERIAL PRIMARY KEY,
   user_id INT,
   name VARCHAR(100) NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE user_address (
   CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   description VARCHAR(800) NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE products (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE toppings (
+CREATE TABLE IF NOT EXISTS toppings (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   image VARCHAR(255) NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE toppings (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE carts (
+CREATE TABLE IF NOT EXISTS carts (
   id SERIAL PRIMARY KEY,
   user_id INT NOT NULL,
   product_id INT NOT NULL,
@@ -58,12 +58,13 @@ CREATE TABLE carts (
   CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
-CREATE TABLE transactions (
-  id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS transactions (
+  id VARCHAR(100) PRIMARY KEY,
   user_id INT,
   name VARCHAR(100) NOT NULL,
   phone VARCHAR(15) NOT NULL,
   address VARCHAR(255) NOT NULL,
+  city VARCHAR(100) NOT NULL,
   postal_code INT NOT NULL,
   total INT NOT NULL,
   status VARCHAR(50),
@@ -72,7 +73,7 @@ CREATE TABLE transactions (
   CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
   transaction_id INT,
   product_id INT NOT NULL,

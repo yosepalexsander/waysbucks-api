@@ -1,25 +1,28 @@
 package entity
 
 type Transaction struct {
-	Id         int    `db:"id"`
-	User_Id    int    `db:"user_id" json:"-"`
-	Name       string `db:"name" json:"name"`
-	Address    string `db:"address" json:"address"`
-	PostalCode int    `db:"postal_code" json:"postal_code"`
-	Phone      string `db:"phone" json:"phone"`
-	Total      int    `db:"total" json:"total"`
-	Status     string `db:"status" json:"status"`
+	Id         string  `db:"id"`
+	User_Id    int     `db:"user_id" json:"-"`
+	Email      string  `json:"email"`
+	ServiceFee int     `json:"service_fee"`
+	Name       string  `db:"name" json:"name"`
+	Address    string  `db:"address" json:"address"`
+	City       string  `db:"city" json:"city"`
+	PostalCode int     `db:"postal_code" json:"postal_code"`
+	Phone      string  `db:"phone" json:"phone"`
+	Total      int     `db:"total" json:"total"`
+	Status     string  `db:"status" json:"status"`
 	Orders     []Order `json:"orders"`
 }
 
 type Order struct {
 	Id             int     `db:"id" json:"id"`
-	Transaction_Id int     `db:"transaction_id" json:"-"`
+	Transaction_Id string  `db:"transaction_id" json:"-"`
 	Product_Id     int     `db:"product_id" json:"product_id,omitempty"`
 	Topping_Ids    []int64 `db:"topping_id" json:"topping_id,omitempty"`
 	OrderProduct
-	Price    int `db:"price" json:"price"`
-	Qty      int `db:"qty" json:"qty"`
+	Price    int            `db:"price" json:"price"`
+	Qty      int            `db:"qty" json:"qty"`
 	Toppings []OrderTopping `json:"toppings"`
 }
 
@@ -48,8 +51,11 @@ type OrderRequest struct {
 
 type TransactionRequest struct {
 	User_Id    int
+	Email      string         `json:"email" validate:"required"`
+	ServiceFee int            `json:"service_fee" validate:"required"`
 	Name       string         `json:"name" validate:"required"`
 	Address    string         `json:"address" validate:"required"`
+	City       string         `json:"city" validate:"required"`
 	PostalCode int            `json:"postal_code" validate:"required"`
 	Phone      string         `json:"phone" validate:"required"`
 	Total      int            `json:"total" validate:"required"`
