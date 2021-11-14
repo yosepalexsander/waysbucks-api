@@ -15,6 +15,7 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 			r.Use(customMiddleware.Authentication)
 			r.Get("/{userID}", h.GetUser)
 			r.Put("/{userID}", h.UpdateUser)
+			r.Post("/{userID}/upload-avatar", h.UploadAvatar)
 			r.Delete("/{userID}", h.DeleteUser)
 
 			r.Group(func(r chi.Router) {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/yosepalexsander/waysbucks-api/entity"
@@ -16,8 +17,8 @@ type UserHandler struct {
 	UserUseCase usecase.UserUseCase
 }
 
-func (s *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request)  {
-	type response struct{
+func (s *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
+	type response struct {
 		commonResponse
 		Payload []entity.User `json:"payload"`
 	}
@@ -39,18 +40,18 @@ func (s *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request)  {
 	responseOK(w, resp)
 }
 
-func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request)  {
-	type response struct{
+func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
+	type response struct {
 		commonResponse
 		Payload *entity.User `json:"payload"`
 	}
 
-	userID, _:= strconv.Atoi(chi.URLParam(r, "userID"))
+	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
 	user, err := s.UserUseCase.FindUserById(r.Context(), userID)
 
 	if err != nil {
 		notFound(w)
-    return
+		return
 	}
 	responseStruct := response{
 		commonResponse: commonResponse{
@@ -65,7 +66,7 @@ func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request)  {
 
 func (s *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, _:= strconv.Atoi(chi.URLParam(r, "userID"))
+	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
 
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
 		if claims.UserID != userID {
@@ -94,10 +95,54 @@ func (s *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	responseOK(w, resp)
 }
 
+func (s *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		badRequest(w, "maximum upload size is 5 MB")
+		return
+	}
+
+	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
+		user, _ := s.UserUseCase.FindUserById(ctx, claims.UserID)
+
+		file, header, fileErr := r.FormFile("image")
+		if fileErr != nil {
+			badRequest(w, fileErr.Error())
+			return
+		}
+		defer file.Close()
+
+		if err := helper.ValidateImageFile(header.Filename); err != nil {
+			badRequest(w, "upload only for image")
+			return
+		}
+		filename := strings.Split(header.Filename, ".")[0] + helper.RandString(15)
+
+		body := make(map[string]interface{})
+		body["image"] = filename
+
+		if err := s.UserUseCase.UpdateImage(ctx, file, user.Image, filename); err != nil {
+			internalServerError(w)
+			return
+		}
+
+		if err := s.UserUseCase.UpdateUser(ctx, claims.UserID, body); err != nil {
+			internalServerError(w)
+			return
+		}
+
+		resp, _ := json.Marshal(commonResponse{
+			Message: "resource has successfully created",
+		})
+		responseOK(w, resp)
+	}
+}
+
 func (s *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
-	
+
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
 		if claims.UserID != userID {
 			forbidden(w)
@@ -110,27 +155,27 @@ func (s *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.UserUseCase.DeleteUser(ctx, userID); err != nil {
 		internalServerError(w)
-    return
+		return
 	}
-	
+
 	resBody, _ := json.Marshal(commonResponse{
-		Message:  "resource successfully deleted",
+		Message: "resource successfully deleted",
 	})
 	responseOK(w, resBody)
 }
 
-func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request)  {
+func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	type (
 		request struct {
-			Name string `json:"name" validate:"required"`
-			Email string `json:"email" validate:"required,email"`
+			Name     string `json:"name" validate:"required"`
+			Email    string `json:"email" validate:"required,email"`
 			Password string `json:"password" validate:"required,min=8,max=16"`
-			Gender string `json:"gender" validate:"required"`
-			Phone string `json:"phone" validate:"required"`
-			IsAdmin bool `json:"is_admin"`
+			Gender   string `json:"gender" validate:"required"`
+			Phone    string `json:"phone" validate:"required"`
+			IsAdmin  bool   `json:"is_admin"`
 		}
 		payload struct {
-			Name string `json:"name"`
+			Name  string `json:"name"`
 			Email string `json:"email"`
 		}
 		response struct {
@@ -144,9 +189,9 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request)  {
 	var body request
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
-    return
+		return
 	}
-	
+
 	isValid, msg := helper.Validate(body)
 	if !isValid {
 		badRequest(w, msg)
@@ -155,18 +200,18 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request)  {
 
 	if user, _ := s.UserUseCase.FindUserByEmail(ctx, body.Email); user.Email == body.Email {
 		badRequest(w, "resource already exist")
-    return
+		return
 	}
 
 	newUser := entity.User{
-		Name: body.Name,
-		Email: body.Email,
+		Name:     body.Name,
+		Email:    body.Email,
 		Password: body.Password,
-		Gender: body.Gender,
-		Phone: body.Phone,
-		IsAdmin: body.IsAdmin,
+		Gender:   body.Gender,
+		Phone:    body.Phone,
+		IsAdmin:  body.IsAdmin,
 	}
-	
+
 	if err := s.UserUseCase.CreateNewUser(ctx, newUser); err != nil {
 		internalServerError(w)
 		return
@@ -176,7 +221,7 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request)  {
 			Message: "resource successfully created",
 		},
 		Payload: payload{
-			Name: body.Name,
+			Name:  body.Name,
 			Email: body.Email,
 		},
 	}
@@ -187,40 +232,40 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request)  {
 // Handle login from client
 // If email not found in DB will return message error with code 404
 // If password is not match when compare with hashedPassword in DB
-// will return message error with code 400  
-func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request)  {
+// will return message error with code 400
+func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	type (
 		request struct {
-			Email string `json:"email"`
+			Email    string `json:"email"`
 			Password string `json:"password"`
 		}
 		payload struct {
-			Id int `json:"id"`
-			Name string `json:"name"`
+			Id    int    `json:"id"`
+			Name  string `json:"name"`
 			Email string `json:"email"`
 			Token string `json:"token"`
 		}
 		response struct {
-		 commonResponse
-		 Payload payload `json:"payload"`
+			commonResponse
+			Payload payload `json:"payload"`
 		}
 	)
-	
+
 	var body request
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
-    return
+		return
 	}
-	
+
 	user, err := s.UserUseCase.FindUserByEmail(r.Context(), body.Email)
 	if err != nil {
 		notFound(w)
-    return
+		return
 	}
-	
+
 	if err := s.UserUseCase.ValidatePassword(user.Password, body.Password); err != nil {
 		badRequest(w, "credential is not valid")
-    return
+		return
 	}
 
 	tokenString, tokenErr := helper.GenerateToken(user)
@@ -233,13 +278,13 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request)  {
 			Message: "login success",
 		},
 		Payload: payload{
-			Id: user.Id,
-			Name: user.Name,
+			Id:    user.Id,
+			Name:  user.Name,
 			Email: body.Email,
 			Token: tokenString,
 		},
 	}
-	
+
 	resBody, _ := json.Marshal(responseStruct)
 	responseOK(w, resBody)
 }

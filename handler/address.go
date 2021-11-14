@@ -17,7 +17,7 @@ type AddressHandler struct {
 }
 
 func (s *AddressHandler) GetUserAddress(w http.ResponseWriter, r *http.Request) {
-	type response struct{
+	type response struct {
 		commonResponse
 		Payload []entity.Address `json:"payload"`
 	}
@@ -29,9 +29,9 @@ func (s *AddressHandler) GetUserAddress(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
-	
-	address, err := s.AddressUseCase.GetUserAddress(ctx, claims.UserID);
-	if  err != nil {
+
+	address, err := s.AddressUseCase.GetUserAddress(ctx, claims.UserID)
+	if err != nil {
 		internalServerError(w)
 		return
 	}
@@ -46,18 +46,18 @@ func (s *AddressHandler) GetUserAddress(w http.ResponseWriter, r *http.Request) 
 	responseOK(w, resp)
 }
 
-func (s *AddressHandler) GetAddress(w http.ResponseWriter, r *http.Request)  {
-	type response struct{
+func (s *AddressHandler) GetAddress(w http.ResponseWriter, r *http.Request) {
+	type response struct {
 		commonResponse
 		Payload *entity.Address `json:"payload"`
-	} 
-	
-	addressID, _ := strconv.Atoi(chi.URLParam(r, "addressID")) 
+	}
+
+	addressID, _ := strconv.Atoi(chi.URLParam(r, "addressID"))
 	address, err := s.AddressUseCase.GetAddress(r.Context(), addressID)
 
 	if err != nil {
 		internalServerError(w)
-		return 
+		return
 	}
 
 	responseStruct := response{
@@ -71,7 +71,7 @@ func (s *AddressHandler) GetAddress(w http.ResponseWriter, r *http.Request)  {
 	responseOK(w, resp)
 }
 
-func (s *AddressHandler) CreateAddress(w http.ResponseWriter, r *http.Request)  {
+func (s *AddressHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims)
 
@@ -83,14 +83,14 @@ func (s *AddressHandler) CreateAddress(w http.ResponseWriter, r *http.Request)  
 	var body entity.Address
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
-    return
+		return
 	}
 
 	if isValid, msg := helper.Validate(body); !isValid {
 		badRequest(w, msg)
 		return
 	}
-	
+
 	body.UserId = claims.UserID
 
 	if err := s.AddressUseCase.CreateNewAddress(ctx, body); err != nil {
@@ -106,7 +106,7 @@ func (s *AddressHandler) CreateAddress(w http.ResponseWriter, r *http.Request)  
 
 func (s *AddressHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	addressID, _:= strconv.Atoi(chi.URLParam(r, "addressID"))
+	addressID, _ := strconv.Atoi(chi.URLParam(r, "addressID"))
 
 	address, err := s.AddressUseCase.GetAddress(ctx, addressID)
 
@@ -114,7 +114,7 @@ func (s *AddressHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 		notFound(w)
 		return
 	}
-	
+
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
 		if claims.UserID != address.UserId {
 			forbidden(w)
@@ -142,10 +142,10 @@ func (s *AddressHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 	responseOK(w, resp)
 }
 
-func (s *AddressHandler) DeleteAddress(w http.ResponseWriter, r *http.Request)  {
+func (s *AddressHandler) DeleteAddress(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	addressID, _ := strconv.Atoi(chi.URLParam(r, "addressID"))
-	
+
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
 		if err := s.AddressUseCase.DeleteAddress(ctx, addressID, claims.UserID); err != nil {
 			if err.Error() == "no rows affected" {
@@ -155,9 +155,9 @@ func (s *AddressHandler) DeleteAddress(w http.ResponseWriter, r *http.Request)  
 			internalServerError(w)
 			return
 		}
-		
+
 		resBody, _ := json.Marshal(commonResponse{
-			Message:  "resource successfully deleted",
+			Message: "resource successfully deleted",
 		})
 		responseOK(w, resBody)
 	} else {
