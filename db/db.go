@@ -8,17 +8,21 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type DB struct {
-	Conn *sqlx.DB
+type DBStore struct {
+	DB *sqlx.DB
 }
 
-func Connect(db *DB) {
+func Connect(db *DBStore) {
 	var err error
-	db.Conn, err = sqlx.Open("postgres", os.Getenv("DATABASE_URL"))
+	db.DB, err = sqlx.Connect("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
-			log.Fatal(err)
+		log.Fatal(err)
 	}
-	log.Println("connect db")
-	db.Conn.SetMaxOpenConns(5)
-	db.Conn.SetMaxIdleConns(2)
+	
+	pingErr := db.DB.Ping()
+	if pingErr != nil {
+		log.Fatal(pingErr)
+	}
+	db.DB.SetMaxOpenConns(5)
+	db.DB.SetMaxIdleConns(2)
 }
