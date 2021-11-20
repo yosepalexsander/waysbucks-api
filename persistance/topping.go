@@ -12,16 +12,16 @@ type ToppingRepo struct {
 	DB *sqlx.DB
 }
 
-func (s ToppingRepo) FindToppings(ctx context.Context) ([]entity.ProductTopping, error)  {
+func (s ToppingRepo) FindToppings(ctx context.Context) ([]entity.ProductTopping, error) {
 	sql, _, _ := sq.
-	Select("id", "name", "image", "price", "is_available").
-	From("toppings").ToSql()
-	
+		Select("id", "name", "image", "price", "is_available").
+		From("toppings").OrderByClause("created_at DESC").ToSql()
+
 	var toppings []entity.ProductTopping
 
 	rows, err := s.DB.QueryxContext(ctx, sql)
 
-	for rows.Next(){
+	for rows.Next() {
 		var topping entity.ProductTopping
 		err = rows.StructScan(&topping)
 
@@ -35,11 +35,11 @@ func (s ToppingRepo) FindToppings(ctx context.Context) ([]entity.ProductTopping,
 	return toppings, nil
 }
 
-func (s ToppingRepo) FindTopping(ctx context.Context, id int) (*entity.ProductTopping, error)  {
+func (s ToppingRepo) FindTopping(ctx context.Context, id int) (*entity.ProductTopping, error) {
 	sql, _, _ := sq.
-	Select("id", "name", "image", "price", "is_available").
-	From("toppings").Where("id=$1").ToSql()
-	
+		Select("id", "name", "image", "price", "is_available").
+		From("toppings").Where("id=$1").ToSql()
+
 	var topping entity.ProductTopping
 
 	err := s.DB.QueryRowxContext(ctx, sql, id).StructScan(&topping)
@@ -50,11 +50,11 @@ func (s ToppingRepo) FindTopping(ctx context.Context, id int) (*entity.ProductTo
 	return &topping, nil
 }
 
-func (s ToppingRepo) SaveTopping(ctx context.Context, topping entity.ProductTopping) error  {
+func (s ToppingRepo) SaveTopping(ctx context.Context, topping entity.ProductTopping) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.Insert("toppings").
-	Columns("name", "image", "price", "is_available").
-	Values(topping.Name, topping.Image, topping.Price, topping.Is_Available).ToSql()
+		Columns("name", "image", "price", "is_available").
+		Values(topping.Name, topping.Image, topping.Price, topping.Is_Available).ToSql()
 
 	_, err := s.DB.ExecContext(ctx, sql, args...)
 	if err != nil {
@@ -78,11 +78,11 @@ func (s ToppingRepo) UpdateTopping(ctx context.Context, id int, newData map[stri
 
 func (s ToppingRepo) DeleteTopping(ctx context.Context, id int) error {
 	sql, _, _ := sq.Delete("toppings").Where("id=$1").ToSql()
-	
+
 	_, err := s.DB.ExecContext(ctx, sql, id)
 	if err != nil {
-		return  err
+		return err
 	}
 
 	return nil
-} 
+}
