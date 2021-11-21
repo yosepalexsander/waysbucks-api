@@ -9,6 +9,7 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/repository"
 	"github.com/yosepalexsander/waysbucks-api/thirdparty"
+	"golang.org/x/sync/errgroup"
 )
 
 type ProductUseCase struct {
@@ -16,25 +17,30 @@ type ProductUseCase struct {
 	repository.ToppingRepository
 }
 
-func (u *ProductUseCase) GetProducts(ctx context.Context) ([]entity.Product, error)  {
+func (u *ProductUseCase) GetProducts(ctx context.Context) ([]entity.Product, error) {
 	products, err := u.ProductRepository.FindProducts(ctx)
-
-	if err != nil {
+	switch {
+	case err != nil:
 		return nil, err
-	}
-	var wg sync.WaitGroup
-	
-	for i := range products {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			imageUrl, _ := thirdparty.GetImageUrl(ctx, products[i].Image)
-			products[i].Image = imageUrl
-		}(i)
+	case len(products) == 0:
+		return nil, sql.ErrNoRows
 	}
 
-	wg.Wait()
-	
+	g, ctx := errgroup.WithContext(ctx)
+	for i := range products {
+		i := i
+		g.Go(func() error {
+			imageUrl, err := thirdparty.GetImageUrl(ctx, products[i].Image)
+			if err == nil && imageUrl != "" {
+				products[i].Image = imageUrl
+			}
+			return err
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, thirdparty.ErrServiceUnavailable
+	}
 	return products, nil
 }
 
@@ -47,7 +53,7 @@ func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity
 
 	imageUrl, _ := thirdparty.GetImageUrl(ctx, product.Image)
 	product.Image = imageUrl
-	
+
 	return product, nil
 }
 
@@ -65,14 +71,14 @@ func (u *ProductUseCase) DeleteProduct(ctx context.Context, id int) error {
 
 func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductTopping, error) {
 	toppings, err := u.ToppingRepository.FindToppings(ctx)
-	
+
 	switch {
-		case err != nil:
-			return nil, err
-		case len(toppings) == 0:
-			return nil, sql.ErrNoRows
+	case err != nil:
+		return nil, err
+	case len(toppings) == 0:
+		return nil, sql.ErrNoRows
 	}
-	
+
 	var wg sync.WaitGroup
 
 	for i := range toppings {
@@ -84,7 +90,7 @@ func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductToppi
 		}(i)
 	}
 	wg.Wait()
-	
+
 	return toppings, nil
 }
 
@@ -100,7 +106,7 @@ func (u *ProductUseCase) CreateTopping(ctx context.Context, topping entity.Produ
 	return nil
 }
 
-func (u *ProductUseCase) UpdateTopping(ctx context.Context, id int, newData map[string]interface{}) error {	
+func (u *ProductUseCase) UpdateTopping(ctx context.Context, id int, newData map[string]interface{}) error {
 	return u.ToppingRepository.UpdateTopping(ctx, id, newData)
 }
 
@@ -110,7 +116,7 @@ func (u *ProductUseCase) UpdateImage(ctx context.Context, file multipart.File, o
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		if err := thirdparty.UploadFile(ctx, file, newName); err != nil  {
+		if err := thirdparty.UploadFile(ctx, file, newName); err != nil {
 			uploadErr = err
 			return
 		}

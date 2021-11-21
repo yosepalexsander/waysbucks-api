@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
-  transaction_id INT,
+  transaction_id VARCHAR(100),
   product_id INT NOT NULL,
   topping_id INT ARRAY,
   price INT NOT NULL,
