@@ -29,6 +29,14 @@ func (s *ProductHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
 
 	products, err := s.ProductUseCase.GetProducts(r.Context())
 	if err != nil {
+		if err == thirdparty.ErrServiceUnavailable {
+			serviceUnavailable(w, "error: cloudinary service unavailable")
+			return
+		}
+		if err == sql.ErrNoRows {
+			notFound(w)
+			return
+		}
 		internalServerError(w)
 		return
 	}
@@ -200,7 +208,7 @@ func (s *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 			internalServerError(w)
 			return
 		}
-		
+
 		if err := thirdparty.RemoveFile(ctx, product.Image); err != nil {
 			internalServerError(w)
 			return
