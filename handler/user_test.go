@@ -12,26 +12,26 @@ const baseUrl = "http://localhost:8080/api/v1"
 
 func TestLogin(t *testing.T) {
 	t.Parallel()
-  client := &http.Client{
+	client := &http.Client{
 		Timeout: 15 * time.Second,
 	}
 
-	reqStruct := []struct{
-		Email string
+	reqStruct := []struct {
+		Email    string
 		Password string
 	}{
 		{
-			Email: "user2@gmail.com",
+			Email:    "user2@gmail.com",
 			Password: "12345678",
 		},
 		{
-			Email: "user3@gmail.com",
+			Email:    "user3@gmail.com",
 			Password: "12345678",
 		},
 	}
-	
+
 	for _, req := range reqStruct {
-		reqBody, _ := json.Marshal(req) 
+		reqBody, _ := json.Marshal(req)
 		requestReader := bytes.NewReader(reqBody)
 		request, err := http.NewRequest("POST", baseUrl+"/login", requestReader)
 		if err != nil {
@@ -51,25 +51,25 @@ func TestLogin(t *testing.T) {
 
 func TestRegisterWithInvalidBody(t *testing.T) {
 	t.Parallel()
-  client := &http.Client{
+	client := &http.Client{
 		Timeout: 15 * time.Second,
 	}
 
-	reqStruct := []struct{
-		Email string
+	reqStruct := []struct {
+		Email    string
 		Password string
 	}{
 		{
-			Email: "test14gmail.com",
+			Email:    "test14gmail.com",
 			Password: "123456",
 		},
 		{
-			Email: "test13gmail.com",
+			Email:    "test13gmail.com",
 			Password: "123456",
 		},
 	}
 	for _, req := range reqStruct {
-		reqBody, _ := json.Marshal(req) 
+		reqBody, _ := json.Marshal(req)
 		requestReader := bytes.NewReader(reqBody)
 		request, err := http.NewRequest("POST", baseUrl+"/register", requestReader)
 		if err != nil {

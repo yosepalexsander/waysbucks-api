@@ -30,36 +30,31 @@ func (i *Interactor) NewAppHandler() *AppHandler {
 }
 
 func (i *Interactor) NewUserHandler() handler.UserHandler {
-	return handler.UserHandler{
-		UserUseCase: usecase.UserUseCase{
-			UserRepository: persistance.UserRepo{DB: i.DB},
-		},
-	}
+	return handler.NewUserHandler(usecase.NewUserUseCase(
+		persistance.NewUserFinder(i.DB),
+		persistance.NewUserMutator(i.DB),
+	))
 }
 
 func (i *Interactor) NewAddressHandler() handler.AddressHandler {
 	return handler.AddressHandler{
-		AddressUseCase: usecase.AddressUseCase{
-			AddressRepository: persistance.AddressRepo{DB: i.DB},
-		},
+		AddressUseCase: usecase.NewAddressUseCase(
+			persistance.NewAddressFinder(i.DB),
+			persistance.NewAddressMutator(i.DB),
+		),
 	}
 }
 
 func (i *Interactor) NewProductHandler() handler.ProductHandler {
-	return handler.ProductHandler{
-		ProductUseCase: usecase.ProductUseCase{
-			ProductRepository: persistance.ProductRepo{DB: i.DB},
-			ToppingRepository: persistance.ToppingRepo{DB: i.DB},
-		},
-	}
+	return handler.NewProductHandler(usecase.NewProductUseCase(
+		persistance.NewProductFinder(i.DB),
+		persistance.NewProductMutator(i.DB),
+		persistance.NewToppingRepo(i.DB),
+	))
 }
 
 func (i *Interactor) NewCartHandler() handler.CartHandler {
-	return handler.CartHandler{
-		CartUseCase: usecase.CartUseCase{
-			CartRepository: persistance.CartRepo{DB: i.DB},
-		},
-	}
+	return handler.NewCartHandler(usecase.NewCartUseCase(persistance.NewCartRepo(i.DB)))
 }
 
 func (i *Interactor) NewTransasctionHandler() handler.TransactionHandler {

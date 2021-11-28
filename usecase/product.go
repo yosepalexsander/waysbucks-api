@@ -13,12 +13,17 @@ import (
 )
 
 type ProductUseCase struct {
-	repository.ProductRepository
+	repository.ProductFinder
+	repository.ProductMutator
 	repository.ToppingRepository
 }
 
+func NewProductUseCase(rpf repository.ProductFinder, rpm repository.ProductMutator, rt repository.ToppingRepository) ProductUseCase {
+	return ProductUseCase{rpf, rpm, rt}
+}
+
 func (u *ProductUseCase) GetProducts(ctx context.Context) ([]entity.Product, error) {
-	products, err := u.ProductRepository.FindProducts(ctx)
+	products, err := u.ProductFinder.FindProducts(ctx)
 	switch {
 	case err != nil:
 		return nil, err
@@ -45,28 +50,34 @@ func (u *ProductUseCase) GetProducts(ctx context.Context) ([]entity.Product, err
 }
 
 func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity.Product, error) {
-	product, err := u.ProductRepository.FindProduct(ctx, productID)
+	product, err := u.ProductFinder.FindProduct(ctx, productID)
 
 	if err != nil {
 		return nil, err
 	}
 
-	imageUrl, _ := thirdparty.GetImageUrl(ctx, product.Image)
-	product.Image = imageUrl
+	if imageUrl, err := thirdparty.GetImageUrl(ctx, product.Image); err == nil || imageUrl != "" {
+		product.Image = imageUrl
+	}
 
 	return product, nil
 }
 
-func (u *ProductUseCase) CreateProduct(ctx context.Context, product entity.Product) error {
-	return u.ProductRepository.SaveProduct(ctx, product)
+func (u *ProductUseCase) CreateProduct(ctx context.Context, productReq entity.ProductRequest) error {
+	product := productFromRequest(productReq)
+	if err := u.ProductMutator.SaveProduct(ctx, product); err != nil {
+		_ = thirdparty.RemoveFile(ctx, product.Name)
+		return err
+	}
+	return nil
 }
 
 func (u *ProductUseCase) UpdateProduct(ctx context.Context, id int, newData map[string]interface{}) error {
-	return u.ProductRepository.UpdateProduct(ctx, id, newData)
+	return u.ProductMutator.UpdateProduct(ctx, id, newData)
 }
 
 func (u *ProductUseCase) DeleteProduct(ctx context.Context, id int) error {
-	return u.ProductRepository.DeleteProduct(ctx, id)
+	return u.ProductMutator.DeleteProduct(ctx, id)
 }
 
 func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductTopping, error) {
@@ -79,18 +90,21 @@ func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductToppi
 		return nil, sql.ErrNoRows
 	}
 
-	var wg sync.WaitGroup
-
+	g, ctx := errgroup.WithContext(ctx)
 	for i := range toppings {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			imageUrl, _ := thirdparty.GetImageUrl(ctx, toppings[i].Image)
-			toppings[i].Image = imageUrl
-		}(i)
+		i := i
+		g.Go(func() error {
+			imageUrl, err := thirdparty.GetImageUrl(ctx, toppings[i].Image)
+			if err == nil && imageUrl != "" {
+				toppings[i].Image = imageUrl
+			}
+			return err
+		})
 	}
-	wg.Wait()
 
+	if err := g.Wait(); err != nil {
+		return nil, thirdparty.ErrServiceUnavailable
+	}
 	return toppings, nil
 }
 
@@ -98,7 +112,8 @@ func (u *ProductUseCase) GetTopping(ctx context.Context, id int) (*entity.Produc
 	return u.FindTopping(ctx, id)
 }
 
-func (u *ProductUseCase) CreateTopping(ctx context.Context, topping entity.ProductTopping) error {
+func (u *ProductUseCase) CreateTopping(ctx context.Context, toppingReq entity.ProductToppingRequest) error {
+	topping := toppingFromRequest(toppingReq)
 	if err := u.ToppingRepository.SaveTopping(ctx, topping); err != nil {
 		_ = thirdparty.RemoveFile(ctx, topping.Name)
 		return err
@@ -139,4 +154,23 @@ func (u *ProductUseCase) UpdateImage(ctx context.Context, file multipart.File, o
 
 func (u *ProductUseCase) DeleteTopping(ctx context.Context, id int) error {
 	return u.ToppingRepository.DeleteTopping(ctx, id)
+}
+
+func productFromRequest(req entity.ProductRequest) entity.Product {
+	return entity.Product{
+		Name:         req.Name,
+		Description:  req.Description,
+		Image:        req.Image,
+		Price:        req.Price,
+		Is_Available: req.Is_Available,
+	}
+}
+
+func toppingFromRequest(req entity.ProductToppingRequest) entity.ProductTopping {
+	return entity.ProductTopping{
+		Name:         req.Name,
+		Image:        req.Image,
+		Price:        req.Price,
+		Is_Available: req.Is_Available,
+	}
 }

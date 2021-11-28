@@ -14,6 +14,10 @@ type CartUseCase struct {
 	CartRepository repository.CartRepository
 }
 
+func NewCartUseCase(r repository.CartRepository) CartUseCase {
+	return CartUseCase{r}
+}
+
 func (u *CartUseCase) GetUserCarts(ctx context.Context, userID int) ([]entity.Cart, error) {
 	carts, err := u.CartRepository.FindCarts(ctx, userID)
 	switch {

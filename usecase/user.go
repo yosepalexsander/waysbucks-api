@@ -12,14 +12,19 @@ import (
 )
 
 type UserUseCase struct {
-	UserRepository repository.UserRepository
+	Finder  repository.UserFinder
+	Mutator repository.UserMutator
+}
+
+func NewUserUseCase(rf repository.UserFinder, rm repository.UserMutator) UserUseCase {
+	return UserUseCase{rf, rm}
 }
 
 func (u *UserUseCase) FindUsers(ctx context.Context) ([]entity.User, error) {
-	return u.UserRepository.FindUsers(ctx)
+	return u.Finder.FindUsers(ctx)
 }
 func (u *UserUseCase) FindUserById(ctx context.Context, id int) (*entity.User, error) {
-	user, err := u.UserRepository.FindUserById(ctx, id)
+	user, err := u.Finder.FindUserById(ctx, id)
 
 	if err != nil {
 		return nil, err
@@ -32,7 +37,7 @@ func (u *UserUseCase) FindUserById(ctx context.Context, id int) (*entity.User, e
 }
 
 func (u *UserUseCase) FindUserByEmail(ctx context.Context, email string) (*entity.User, error) {
-	return u.UserRepository.FindUserByEmail(ctx, email)
+	return u.Finder.FindUserByEmail(ctx, email)
 }
 
 func (u *UserUseCase) CreateNewUser(ctx context.Context, user entity.User) error {
@@ -44,7 +49,7 @@ func (u *UserUseCase) CreateNewUser(ctx context.Context, user entity.User) error
 
 	user.Password = hashedPassword
 
-	if err := u.UserRepository.SaveUser(ctx, user); err != nil {
+	if err := u.Mutator.SaveUser(ctx, user); err != nil {
 		return err
 	}
 
@@ -71,14 +76,14 @@ func (u *UserUseCase) ChangePassword(ctx context.Context, id int, newPass string
 	newData := make(map[string]interface{}, 1)
 	newData["password"] = hashedPassword
 
-	if err := u.UserRepository.UpdateUser(ctx, id, newData); err != nil {
+	if err := u.Mutator.UpdateUser(ctx, id, newData); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (u *UserUseCase) UpdateUser(ctx context.Context, id int, newData map[string]interface{}) error {
-	return u.UserRepository.UpdateUser(ctx, id, newData)
+	return u.Mutator.UpdateUser(ctx, id, newData)
 }
 
 func (u *UserUseCase) UpdateImage(ctx context.Context, file multipart.File, oldName string, newName string) error {
@@ -108,7 +113,7 @@ func (u *UserUseCase) UpdateImage(ctx context.Context, file multipart.File, oldN
 	return nil
 }
 func (u *UserUseCase) DeleteUser(ctx context.Context, id int) error {
-	return u.UserRepository.DeleteUser(ctx, id)
+	return u.Mutator.DeleteUser(ctx, id)
 }
 
 func hashPassword(password string) (string, error) {

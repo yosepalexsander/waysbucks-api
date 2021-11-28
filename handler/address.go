@@ -80,7 +80,7 @@ func (s *AddressHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var body entity.Address
+	var body entity.AddressRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
 		return
@@ -91,9 +91,7 @@ func (s *AddressHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body.UserId = claims.UserID
-
-	if err := s.AddressUseCase.CreateNewAddress(ctx, body); err != nil {
+	if err := s.AddressUseCase.CreateNewAddress(ctx, claims.UserID, body); err != nil {
 		internalServerError(w)
 		return
 	}

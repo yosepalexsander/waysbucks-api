@@ -6,13 +6,18 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 	"github.com/yosepalexsander/waysbucks-api/entity"
+	"github.com/yosepalexsander/waysbucks-api/repository"
 )
 
-type ToppingRepo struct {
+type toppingRepo struct {
 	DB *sqlx.DB
 }
 
-func (s ToppingRepo) FindToppings(ctx context.Context) ([]entity.ProductTopping, error) {
+func NewToppingRepo(DB *sqlx.DB) repository.ToppingRepository {
+	return &toppingRepo{DB}
+}
+
+func (s *toppingRepo) FindToppings(ctx context.Context) ([]entity.ProductTopping, error) {
 	sql, _, _ := sq.
 		Select("id", "name", "image", "price", "is_available").
 		From("toppings").OrderByClause("created_at DESC").ToSql()
@@ -35,7 +40,7 @@ func (s ToppingRepo) FindToppings(ctx context.Context) ([]entity.ProductTopping,
 	return toppings, nil
 }
 
-func (s ToppingRepo) FindTopping(ctx context.Context, id int) (*entity.ProductTopping, error) {
+func (s *toppingRepo) FindTopping(ctx context.Context, id int) (*entity.ProductTopping, error) {
 	sql, _, _ := sq.
 		Select("id", "name", "image", "price", "is_available").
 		From("toppings").Where("id=$1").ToSql()
@@ -50,7 +55,7 @@ func (s ToppingRepo) FindTopping(ctx context.Context, id int) (*entity.ProductTo
 	return &topping, nil
 }
 
-func (s ToppingRepo) SaveTopping(ctx context.Context, topping entity.ProductTopping) error {
+func (s *toppingRepo) SaveTopping(ctx context.Context, topping entity.ProductTopping) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.Insert("toppings").
 		Columns("name", "image", "price", "is_available").
@@ -64,7 +69,7 @@ func (s ToppingRepo) SaveTopping(ctx context.Context, topping entity.ProductTopp
 	return nil
 }
 
-func (s ToppingRepo) UpdateTopping(ctx context.Context, id int, newData map[string]interface{}) error {
+func (s *toppingRepo) UpdateTopping(ctx context.Context, id int, newData map[string]interface{}) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.Update("toppings").SetMap(newData).Where(sq.Eq{"id": id}).ToSql()
 
@@ -76,7 +81,7 @@ func (s ToppingRepo) UpdateTopping(ctx context.Context, id int, newData map[stri
 	return nil
 }
 
-func (s ToppingRepo) DeleteTopping(ctx context.Context, id int) error {
+func (s *toppingRepo) DeleteTopping(ctx context.Context, id int) error {
 	sql, _, _ := sq.Delete("toppings").Where("id=$1").ToSql()
 
 	_, err := s.DB.ExecContext(ctx, sql, id)

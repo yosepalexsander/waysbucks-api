@@ -6,9 +6,12 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/entity"
 )
 
-type ProductRepository interface {
+type ProductFinder interface {
 	FindProducts(ctx context.Context) ([]entity.Product, error)
 	FindProduct(ctx context.Context, id int) (*entity.Product, error)
+}
+
+type ProductMutator interface {
 	SaveProduct(ctx context.Context, product entity.Product) error
 	UpdateProduct(ctx context.Context, id int, newProduct map[string]interface{}) error
 	DeleteProduct(ctx context.Context, id int) error

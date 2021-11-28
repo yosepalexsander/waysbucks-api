@@ -21,6 +21,10 @@ type ProductHandler struct {
 	ProductUseCase usecase.ProductUseCase
 }
 
+func NewProductHandler(u usecase.ProductUseCase) ProductHandler {
+	return ProductHandler{u}
+}
+
 func (s *ProductHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
@@ -98,9 +102,9 @@ func (s *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		badRequest(w, "upload only for image")
 		return
 	}
-	filename := strings.Split(header.Filename, ".")[0] + helper.RandString(15)
+	filename := strings.Split(header.Filename, ".")[0] + "-" + helper.RandString(15)
 
-	var body entity.Product
+	var body entity.ProductRequest
 	if err := schema.NewDecoder().Decode(&body, r.MultipartForm.Value); err != nil {
 		badRequest(w, "invalid request body")
 		return
@@ -157,7 +161,7 @@ func (s *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		filename := strings.Split(header.Filename, ".")[0] + helper.RandString(15)
+		filename := strings.Split(header.Filename, ".")[0] + "-" + helper.RandString(15)
 		body["image"] = filename
 
 		if err := s.ProductUseCase.UpdateProduct(ctx, productID, body); err != nil {
@@ -198,7 +202,7 @@ func (s *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	productID, _ := strconv.Atoi(chi.URLParam(r, "productID"))
 
 	if _, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
-		product, err := s.ProductUseCase.ProductRepository.FindProduct(ctx, productID)
+		product, err := s.ProductUseCase.FindProduct(ctx, productID)
 		if err != nil {
 			notFound(w)
 			return
@@ -269,9 +273,9 @@ func (s *ProductHandler) CreateTopping(w http.ResponseWriter, r *http.Request) {
 	if err := helper.ValidateImageFile(header.Filename); err != nil {
 		badRequest(w, "upload only for image")
 	}
-	filename := strings.Split(header.Filename, ".")[0] + helper.RandString(15)
+	filename := strings.Split(header.Filename, ".")[0] + "-" + helper.RandString(15)
 
-	var body entity.ProductTopping
+	var body entity.ProductToppingRequest
 	if err := schema.NewDecoder().Decode(&body, r.MultipartForm.Value); err != nil {
 		badRequest(w, "invalid request body")
 		return
@@ -327,7 +331,7 @@ func (s *ProductHandler) UpdateTopping(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		filename := strings.Split(header.Filename, ".")[0] + helper.RandString(15)
+		filename := strings.Split(header.Filename, ".")[0] + "-" + helper.RandString(15)
 		body["image"] = filename
 
 		topping, err := s.ProductUseCase.GetTopping(ctx, toppingID)

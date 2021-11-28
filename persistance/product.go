@@ -6,15 +6,24 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 	"github.com/yosepalexsander/waysbucks-api/entity"
+	"github.com/yosepalexsander/waysbucks-api/repository"
 )
 
 type ProductRepo struct {
 	DB *sqlx.DB
 }
 
-func (storage ProductRepo) FindProducts(ctx context.Context) ([]entity.Product, error) {
+func NewProductFinder(DB *sqlx.DB) repository.ProductFinder {
+	return &ProductRepo{DB}
+}
+
+func NewProductMutator(DB *sqlx.DB) repository.ProductMutator {
+	return &ProductRepo{DB}
+}
+
+func (storage *ProductRepo) FindProducts(ctx context.Context) ([]entity.Product, error) {
 	sql, _, _ := sq.Select("id", "name", "description", "image", "price", "is_available", "created_at", "updated_at").
-	From("products").OrderByClause("created_at DESC").ToSql()
+		From("products").OrderByClause("created_at DESC").ToSql()
 
 	var products []entity.Product
 
@@ -28,15 +37,15 @@ func (storage ProductRepo) FindProducts(ctx context.Context) ([]entity.Product, 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return products, nil
 }
 
-func (storage ProductRepo) FindProduct(ctx context.Context, id int) (*entity.Product, error) {
+func (storage *ProductRepo) FindProduct(ctx context.Context, id int) (*entity.Product, error) {
 	sql, _, _ := sq.
-	Select("id", "name", "description", "image", "price", "is_available").
-	From("products").
-	Where("id=$1").ToSql()
+		Select("id", "name", "description", "image", "price", "is_available").
+		From("products").
+		Where("id=$1").ToSql()
 
 	var product entity.Product
 	err := storage.DB.QueryRowxContext(ctx, sql, id).StructScan(&product)
@@ -47,36 +56,36 @@ func (storage ProductRepo) FindProduct(ctx context.Context, id int) (*entity.Pro
 	return &product, nil
 }
 
-func (storage ProductRepo) SaveProduct(ctx context.Context, product entity.Product) error {
+func (storage *ProductRepo) SaveProduct(ctx context.Context, product entity.Product) error {
 	sql, args, _ := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
-	Insert("products").
-	Columns("name", "description", "image", "price", "is_available").
-	Values(product.Name, product.Description, product.Image, product.Price, product.Is_Available).ToSql()
+		Insert("products").
+		Columns("name", "description", "image", "price", "is_available").
+		Values(product.Name, product.Description, product.Image, product.Price, product.Is_Available).ToSql()
 
 	_, err := storage.DB.ExecContext(ctx, sql, args...)
 
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
-func (storage ProductRepo) UpdateProduct(ctx context.Context, id int, newProduct map[string]interface{}) error {
+func (storage *ProductRepo) UpdateProduct(ctx context.Context, id int, newProduct map[string]interface{}) error {
 	sql, args, _ := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
-	Update("products").SetMap(newProduct).
-	Where(sq.Eq{"id": id}).ToSql()
+		Update("products").SetMap(newProduct).
+		Where(sq.Eq{"id": id}).ToSql()
 
 	_, err := storage.DB.ExecContext(ctx, sql, args...)
 
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
-func (storage ProductRepo) DeleteProduct(ctx context.Context, id int) error {
+func (storage *ProductRepo) DeleteProduct(ctx context.Context, id int) error {
 	sql, _, _ := sq.Delete("products").Where("id=$1").ToSql()
 
 	_, err := storage.DB.ExecContext(ctx, sql, id)
@@ -84,6 +93,6 @@ func (storage ProductRepo) DeleteProduct(ctx context.Context, id int) error {
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }

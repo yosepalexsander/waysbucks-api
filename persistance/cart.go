@@ -7,13 +7,17 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/yosepalexsander/waysbucks-api/entity"
+	"github.com/yosepalexsander/waysbucks-api/repository"
 )
 
-type CartRepo struct {
+type cartRepo struct {
 	DB *sqlx.DB
 }
 
-func (storage CartRepo) FindCarts(ctx context.Context, userID int) ([]entity.Cart, error) {
+func NewCartRepo(DB *sqlx.DB) repository.CartRepository {
+	return &cartRepo{DB}
+}
+func (storage *cartRepo) FindCarts(ctx context.Context, userID int) ([]entity.Cart, error) {
 	sql, _, _ := sq.Select("id", "product_id", "topping_id", "price", "qty").From("carts").Where("user_id=$1").OrderByClause("id DESC").ToSql()
 	productSql, _, _ := sq.Select("id", "name", "image", "price").From("products").Where("id=$1").ToSql()
 	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id= $1").ToSql()
@@ -43,7 +47,7 @@ func (storage CartRepo) FindCarts(ctx context.Context, userID int) ([]entity.Car
 	return carts, nil
 }
 
-func (storage CartRepo) SaveToCart(ctx context.Context, cart entity.Cart) error {
+func (storage *cartRepo) SaveToCart(ctx context.Context, cart entity.Cart) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	sql, args, _ := psql.Insert("carts").
@@ -58,7 +62,7 @@ func (storage CartRepo) SaveToCart(ctx context.Context, cart entity.Cart) error 
 	return nil
 }
 
-func (storage CartRepo) UpdateCart(ctx context.Context, id int, userID int, data map[string]interface{}) error {
+func (storage *cartRepo) UpdateCart(ctx context.Context, id int, userID int, data map[string]interface{}) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	sql, args, _ := psql.Update("carts").SetMap(data).Where(sq.Eq{"id": id, "user_id": userID}).ToSql()
@@ -71,7 +75,7 @@ func (storage CartRepo) UpdateCart(ctx context.Context, id int, userID int, data
 	return nil
 }
 
-func (storage CartRepo) DeleteCart(ctx context.Context, id int, userID int) error {
+func (storage *cartRepo) DeleteCart(ctx context.Context, id int, userID int) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	sql, args, _ := psql.Delete("carts").Where(sq.Eq{"id": id, "user_id": userID}).ToSql()

@@ -17,6 +17,10 @@ type UserHandler struct {
 	UserUseCase usecase.UserUseCase
 }
 
+func NewUserHandler(u usecase.UserUseCase) UserHandler {
+	return UserHandler{u}
+}
+
 func (s *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
@@ -41,27 +45,34 @@ func (s *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	type response struct {
 		commonResponse
 		Payload *entity.User `json:"payload"`
 	}
 
 	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
-	user, err := s.UserUseCase.FindUserById(r.Context(), userID)
+	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
+		if claims.UserID != userID {
+			forbidden(w)
+			return
+		}
+		user, err := s.UserUseCase.FindUserById(ctx, userID)
+		if err != nil {
+			notFound(w)
+			return
+		}
 
-	if err != nil {
-		notFound(w)
-		return
-	}
-	responseStruct := response{
-		commonResponse: commonResponse{
-			Message: "resource has successfully get",
-		},
-		Payload: user,
-	}
+		responseStruct := response{
+			commonResponse: commonResponse{
+				Message: "resource has successfully get",
+			},
+			Payload: user,
+		}
 
-	resBody, _ := json.Marshal(responseStruct)
-	responseOK(w, resBody)
+		resBody, _ := json.Marshal(responseStruct)
+		responseOK(w, resBody)
+	}
 }
 
 func (s *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +128,7 @@ func (s *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 			badRequest(w, "upload only for image")
 			return
 		}
-		filename := strings.Split(header.Filename, ".")[0] + helper.RandString(15)
+		filename := strings.Split(header.Filename, ".")[0] + "-" + helper.RandString(15)
 
 		body := make(map[string]interface{})
 		body["image"] = filename

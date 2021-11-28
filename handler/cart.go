@@ -19,6 +19,10 @@ type CartHandler struct {
 	CartUseCase usecase.CartUseCase
 }
 
+func NewCartHandler(u usecase.CartUseCase) CartHandler {
+	return CartHandler{u}
+}
+
 func (s *CartHandler) GetUserCarts(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
