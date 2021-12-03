@@ -36,10 +36,11 @@ func (u *ProductUseCase) GetProducts(ctx context.Context) ([]entity.Product, err
 		i := i
 		g.Go(func() error {
 			imageUrl, err := thirdparty.GetImageUrl(ctx, products[i].Image)
-			if err == nil && imageUrl != "" {
-				products[i].Image = imageUrl
+			if err != nil {
+				return err
 			}
-			return err
+			products[i].Image = imageUrl
+			return nil
 		})
 	}
 
@@ -56,11 +57,12 @@ func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity
 		return nil, err
 	}
 
-	if imageUrl, err := thirdparty.GetImageUrl(ctx, product.Image); err == nil || imageUrl != "" {
+	if imageUrl, err := thirdparty.GetImageUrl(ctx, product.Image); err != nil {
+		return nil, thirdparty.ErrServiceUnavailable
+	} else {
 		product.Image = imageUrl
+		return product, nil
 	}
-
-	return product, nil
 }
 
 func (u *ProductUseCase) CreateProduct(ctx context.Context, productReq entity.ProductRequest) error {
@@ -95,10 +97,11 @@ func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductToppi
 		i := i
 		g.Go(func() error {
 			imageUrl, err := thirdparty.GetImageUrl(ctx, toppings[i].Image)
-			if err == nil && imageUrl != "" {
-				toppings[i].Image = imageUrl
+			if err != nil {
+				return err
 			}
-			return err
+			toppings[i].Image = imageUrl
+			return nil
 		})
 	}
 

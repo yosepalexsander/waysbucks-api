@@ -67,6 +67,10 @@ func (s *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 
 	product, err := s.ProductUseCase.GetProduct(ctx, productID)
 	if err != nil {
+		if err == thirdparty.ErrServiceUnavailable {
+			serviceUnavailable(w, "error: cloudinary service unavailable")
+			return
+		}
 		internalServerError(w)
 		return
 	}
