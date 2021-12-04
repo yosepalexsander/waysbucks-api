@@ -50,6 +50,9 @@ func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity
 	if err != nil {
 		return nil, err
 	}
+	if product == nil {
+		return nil, sql.ErrNoRows
+	}
 
 	imageUrl, _ := thirdparty.GetImageUrl(ctx, product.Image)
 	product.Image = imageUrl
