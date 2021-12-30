@@ -7,7 +7,7 @@ import (
 )
 
 type ProductFinder interface {
-	FindProducts(ctx context.Context) ([]entity.Product, error)
+	FindProducts(ctx context.Context, whereClauses []string, orderClause string) ([]entity.Product, error)
 	FindProduct(ctx context.Context, id int) (*entity.Product, error)
 }
 

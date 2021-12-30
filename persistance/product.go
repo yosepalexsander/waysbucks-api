@@ -21,11 +21,22 @@ func NewProductMutator(DB *sqlx.DB) repository.ProductMutator {
 	return &ProductRepo{DB}
 }
 
-func (storage *ProductRepo) FindProducts(ctx context.Context) ([]entity.Product, error) {
-	sql, _, _ := sq.Select("id", "name", "description", "image", "price", "is_available", "created_at", "updated_at").
-		From("products").OrderByClause("created_at DESC").ToSql()
+func (storage *ProductRepo) FindProducts(ctx context.Context, whereClauses []string, orderClause string) ([]entity.Product, error) {
+	sq := sq.Select("id", "name", "description", "image", "price", "is_available", "created_at", "updated_at").
+		From("products")
 
-	var products []entity.Product
+	for _, v := range whereClauses {
+		sq = sq.Where(v)
+	}
+
+	if orderClause != "" {
+		sq = sq.OrderByClause(orderClause)
+	} else {
+		sq = sq.OrderByClause("created_at DESC")
+	}
+
+	sql, _, _ := sq.ToSql()
+	products := []entity.Product{}
 
 	rows, err := storage.DB.QueryxContext(ctx, sql)
 	for rows.Next() {

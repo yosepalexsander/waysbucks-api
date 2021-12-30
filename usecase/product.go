@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"mime/multipart"
-	"sync"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
+	"github.com/yosepalexsander/waysbucks-api/helper"
 	"github.com/yosepalexsander/waysbucks-api/repository"
 	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"golang.org/x/sync/errgroup"
@@ -22,8 +22,10 @@ func NewProductUseCase(rpf repository.ProductFinder, rpm repository.ProductMutat
 	return ProductUseCase{rpf, rpm, rt}
 }
 
-func (u *ProductUseCase) GetProducts(ctx context.Context) ([]entity.Product, error) {
-	products, err := u.ProductFinder.FindProducts(ctx)
+func (u *ProductUseCase) GetProducts(ctx context.Context, params map[string][]string) ([]entity.Product, error) {
+	whereClauses, orderClauses := helper.QueryParamsToSqlClauses(params)
+	products, err := u.ProductFinder.FindProducts(ctx, whereClauses, orderClauses)
+
 	switch {
 	case err != nil:
 		return nil, err
@@ -36,9 +38,11 @@ func (u *ProductUseCase) GetProducts(ctx context.Context) ([]entity.Product, err
 		i := i
 		g.Go(func() error {
 			imageUrl, err := thirdparty.GetImageUrl(ctx, products[i].Image)
+
 			if err != nil {
 				return err
 			}
+
 			products[i].Image = imageUrl
 			return nil
 		})
@@ -47,12 +51,12 @@ func (u *ProductUseCase) GetProducts(ctx context.Context) ([]entity.Product, err
 	if err := g.Wait(); err != nil {
 		return nil, thirdparty.ErrServiceUnavailable
 	}
+
 	return products, nil
 }
 
 func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity.Product, error) {
 	product, err := u.ProductFinder.FindProduct(ctx, productID)
-
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +71,12 @@ func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity
 
 func (u *ProductUseCase) CreateProduct(ctx context.Context, productReq entity.ProductRequest) error {
 	product := productFromRequest(productReq)
+
 	if err := u.ProductMutator.SaveProduct(ctx, product); err != nil {
 		_ = thirdparty.RemoveFile(ctx, product.Name)
 		return err
 	}
+
 	return nil
 }
 
@@ -93,6 +99,7 @@ func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductToppi
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
+
 	for i := range toppings {
 		i := i
 		g.Go(func() error {
@@ -100,7 +107,9 @@ func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductToppi
 			if err != nil {
 				return err
 			}
+
 			toppings[i].Image = imageUrl
+
 			return nil
 		})
 	}
@@ -108,6 +117,7 @@ func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductToppi
 	if err := g.Wait(); err != nil {
 		return nil, thirdparty.ErrServiceUnavailable
 	}
+
 	return toppings, nil
 }
 
@@ -117,10 +127,12 @@ func (u *ProductUseCase) GetTopping(ctx context.Context, id int) (*entity.Produc
 
 func (u *ProductUseCase) CreateTopping(ctx context.Context, toppingReq entity.ProductToppingRequest) error {
 	topping := toppingFromRequest(toppingReq)
+
 	if err := u.ToppingRepository.SaveTopping(ctx, topping); err != nil {
 		_ = thirdparty.RemoveFile(ctx, topping.Name)
 		return err
 	}
+
 	return nil
 }
 
@@ -129,27 +141,24 @@ func (u *ProductUseCase) UpdateTopping(ctx context.Context, id int, newData map[
 }
 
 func (u *ProductUseCase) UpdateImage(ctx context.Context, file multipart.File, oldName string, newName string) error {
-	wg := &sync.WaitGroup{}
-	var uploadErr error
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		if err := thirdparty.UploadFile(ctx, file, newName); err != nil {
-			uploadErr = err
-			return
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		if err := thirdparty.RemoveFile(ctx, oldName); err != nil {
-			uploadErr = err
-			return
-		}
-	}()
-	wg.Wait()
+	g, ctx := errgroup.WithContext(ctx)
 
-	if uploadErr != nil {
-		return uploadErr
+	g.Go(func() error {
+		if err := thirdparty.UploadFile(ctx, file, newName); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if err := thirdparty.RemoveFile(ctx, oldName); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
 	}
 
 	return nil

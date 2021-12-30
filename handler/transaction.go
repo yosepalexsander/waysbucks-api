@@ -6,8 +6,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/midtrans/midtrans-go/coreapi"
-	"github.com/midtrans/midtrans-go/snap"
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/handler/middleware"
 	"github.com/yosepalexsander/waysbucks-api/helper"
@@ -24,17 +22,24 @@ func NewTransactionHandler(u usecase.TransactionUseCase) TransactionHandler {
 }
 
 func (s *TransactionHandler) CreateTransaction(w http.ResponseWriter, r *http.Request) {
+	type ResponsePayload struct {
+		Token       string `json:"token"`
+		RedirectURL string `json:"redirect_url"`
+	}
 	type response struct {
 		commonResponse
-		Payload *snap.Response `json:"payload"`
-	}
-	ctx := r.Context()
-	claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims)
-	if !ok {
-		w.WriteHeader(http.StatusUnprocessableEntity)
+		Payload ResponsePayload `json:"payload"`
 	}
 
-	var body entity.TransactionRequest
+	ctx := r.Context()
+	claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims)
+
+	if !ok {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+
+	body := entity.TransactionRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
@@ -51,14 +56,19 @@ func (s *TransactionHandler) CreateTransaction(w http.ResponseWriter, r *http.Re
 		internalServerError(w)
 		return
 	}
+
 	snapRes := thirdparty.CreateTransaction(createdTransaction)
 
 	resp, _ := json.Marshal(response{
 		commonResponse: commonResponse{
 			Message: "resources has successfully created",
 		},
-		Payload: snapRes,
+		Payload: ResponsePayload{
+			Token:       snapRes.Token,
+			RedirectURL: snapRes.RedirectURL,
+		},
 	})
+
 	responseOK(w, resp)
 }
 
@@ -70,8 +80,10 @@ func (s *TransactionHandler) GetTransactions(w http.ResponseWriter, r *http.Requ
 
 	ctx := r.Context()
 	_, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims)
+
 	if !ok {
 		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
 	}
 
 	transactions, err := s.TransactionUseCase.GetTransactions(ctx)
@@ -98,18 +110,22 @@ func (s *TransactionHandler) GetUserTransactions(w http.ResponseWriter, r *http.
 
 	ctx := r.Context()
 	claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims)
+
 	if !ok {
 		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
 	}
 
 	transactions, err := s.TransactionUseCase.GetUserTransactions(ctx, claims.UserID)
-
 	if err != nil {
-		if err.Error() == "object storage service unavailable" {
-			serviceUnavailable(w, "error: "+err.Error())
-			return
+		switch err {
+		case thirdparty.ErrServiceUnavailable:
+			serviceUnavailable(w, "error: cloudinary service unavailable")
+		case sql.ErrNoRows:
+			notFound(w)
+		default:
+			internalServerError(w)
 		}
-		internalServerError(w)
 		return
 	}
 
@@ -119,6 +135,7 @@ func (s *TransactionHandler) GetUserTransactions(w http.ResponseWriter, r *http.
 		},
 		Payload: transactions,
 	})
+
 	responseOK(w, resp)
 }
 
@@ -154,7 +171,7 @@ func (s *TransactionHandler) GetTransaction(w http.ResponseWriter, r *http.Reque
 func (s *TransactionHandler) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 	transactionID := chi.URLParam(r, "transactionID")
 
-	var data map[string]interface{}
+	data := make(map[string]interface{})
 
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		badRequest(w, "invalid request")
@@ -176,34 +193,36 @@ func (s *TransactionHandler) UpdateTransaction(w http.ResponseWriter, r *http.Re
 // Catch notification from midtrans request POST after
 func (s *TransactionHandler) PaymentNotification(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var body coreapi.TransactionStatusResponse
 
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		badRequest(w, "invalid request")
+	transaction, err := thirdparty.ParseTransactionResponse(r.Body)
+	if err != nil {
+		internalServerError(w)
 		return
 	}
 
 	updateStatus := func(status string) {
 		data := make(map[string]interface{})
 		data["status"] = status
-		if err := s.TransactionUseCase.UpdateTransaction(ctx, body.TransactionID, data); err != nil {
+
+		if err := s.TransactionUseCase.UpdateTransaction(ctx, transaction.TransactionID, data); err != nil {
 			internalServerError(w)
 			return
 		}
+
 		w.WriteHeader(http.StatusOK)
 	}
 
-	if body.TransactionStatus == "capture" {
-		if body.FraudStatus == "challange" {
+	if transaction.TransactionStatus == "capture" {
+		if transaction.FraudStatus == "challange" {
 			updateStatus("pending")
-		} else if body.FraudStatus == "accept" {
+		} else if transaction.FraudStatus == "accept" {
 			updateStatus("success")
 		}
-	} else if body.TransactionStatus == "settlement" {
+	} else if transaction.TransactionStatus == "settlement" {
 		updateStatus("success")
-	} else if body.TransactionStatus == "cancel" || body.TransactionStatus == "deny" || body.TransactionStatus == "expire" {
+	} else if transaction.TransactionStatus == "cancel" || transaction.TransactionStatus == "deny" || transaction.TransactionStatus == "expire" {
 		updateStatus("failure")
-	} else if body.TransactionStatus == "pending" {
+	} else if transaction.TransactionStatus == "pending" {
 		updateStatus("pending")
 	}
 }
