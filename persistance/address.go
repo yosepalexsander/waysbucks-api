@@ -14,11 +14,7 @@ type addressRepo struct {
 	DB *sqlx.DB
 }
 
-func NewAddressFinder(DB *sqlx.DB) repository.AddressFinder {
-	return &addressRepo{DB}
-}
-
-func NewAddressMutator(DB *sqlx.DB) repository.AddressMutator {
+func NewAddressRepository(DB *sqlx.DB) repository.AddressRepository {
 	return &addressRepo{DB}
 }
 
@@ -38,7 +34,7 @@ func (storage *addressRepo) SaveAddress(ctx context.Context, userID int, address
 	return nil
 }
 
-func (storage *addressRepo) FindUserAddress(ctx context.Context, userID int) ([]entity.Address, error) {
+func (storage *addressRepo) FindAllUserAddresses(ctx context.Context, userID int) ([]entity.Address, error) {
 	sql, _, _ := sq.
 		Select("id", "name", "phone", "address", "city", "postal_code").
 		From("user_address").

@@ -3,7 +3,6 @@ package handler
 import (
 	"database/sql"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -23,7 +22,7 @@ func NewCartHandler(u usecase.CartUseCase) CartHandler {
 	return CartHandler{u}
 }
 
-func (s *CartHandler) GetUserCarts(w http.ResponseWriter, r *http.Request) {
+func (s *CartHandler) GetCarts(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
 		Payload []entity.Cart `json:"payload"`
@@ -37,7 +36,7 @@ func (s *CartHandler) GetUserCarts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	carts, err := s.CartUseCase.GetUserCarts(ctx, claims.UserID)
+	carts, err := s.CartUseCase.GetCarts(ctx, claims.UserID)
 	if err != nil {
 		switch err {
 		case thirdparty.ErrServiceUnavailable:
@@ -83,7 +82,7 @@ func (s *CartHandler) CreateCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := s.CartUseCase.SaveToCart(ctx, body)
+	err := s.CartUseCase.SaveCart(ctx, body)
 	if err != nil {
 		internalServerError(w)
 		return
@@ -107,7 +106,6 @@ func (s *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body := make(map[string]interface{})
-
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
 		return
@@ -115,7 +113,6 @@ func (s *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.CartUseCase.UpdateCart(ctx, cartID, claims.UserID, body); err != nil {
 		internalServerError(w)
-		log.Println(err)
 		return
 	}
 

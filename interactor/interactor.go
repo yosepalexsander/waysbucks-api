@@ -39,17 +39,14 @@ func (i *Interactor) NewUserHandler() handler.UserHandler {
 func (i *Interactor) NewAddressHandler() handler.AddressHandler {
 	return handler.AddressHandler{
 		AddressUseCase: usecase.NewAddressUseCase(
-			persistance.NewAddressFinder(i.DB),
-			persistance.NewAddressMutator(i.DB),
+			persistance.NewAddressRepository(i.DB),
 		),
 	}
 }
 
 func (i *Interactor) NewProductHandler() handler.ProductHandler {
 	return handler.NewProductHandler(usecase.NewProductUseCase(
-		persistance.NewProductFinder(i.DB),
-		persistance.NewProductMutator(i.DB),
-		persistance.NewToppingRepo(i.DB),
+		persistance.NewProductRepository(i.DB),
 	))
 }
 

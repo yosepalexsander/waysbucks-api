@@ -51,13 +51,8 @@ func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		Payload *entity.User `json:"payload"`
 	}
 
-	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
-		if claims.UserID != userID {
-			forbidden(w)
-			return
-		}
-		user, err := s.UserUseCase.FindUserById(ctx, userID)
+		user, err := s.UserUseCase.FindUserById(ctx, claims.UserID)
 		if err != nil {
 			notFound(w)
 			return
@@ -72,38 +67,35 @@ func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 
 		resBody, _ := json.Marshal(responseStruct)
 		responseOK(w, resBody)
+	} else {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
 	}
 }
 
 func (s *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
 
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
-		if claims.UserID != userID {
-			forbidden(w)
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			badRequest(w, "request invalid")
 			return
 		}
+
+		if err := s.UserUseCase.UpdateUser(ctx, claims.UserID, body); err != nil {
+			internalServerError(w)
+			return
+		}
+
+		resp, _ := json.Marshal(commonResponse{
+			Message: "resource successfully updated",
+		})
+		responseOK(w, resp)
 	} else {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
-
-	var body map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		badRequest(w, "request invalid")
-		return
-	}
-
-	if err := s.UserUseCase.UpdateUser(ctx, userID, body); err != nil {
-		internalServerError(w)
-		return
-	}
-
-	resp, _ := json.Marshal(commonResponse{
-		Message: "resource successfully updated",
-	})
-	responseOK(w, resp)
 }
 
 func (s *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +116,7 @@ func (s *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		}
 		defer file.Close()
 
-		if err := helper.ValidateImageFile(header.Filename); err != nil {
+		if err := helper.ValidateImageFile(file, header.Filename); err != nil {
 			badRequest(w, "upload only for image")
 			return
 		}

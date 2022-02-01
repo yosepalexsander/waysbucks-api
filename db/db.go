@@ -18,11 +18,12 @@ func Connect(db *DBStore) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	pingErr := db.DB.Ping()
 	if pingErr != nil {
 		log.Fatal(pingErr)
 	}
+
 	db.DB.SetMaxOpenConns(5)
 	db.DB.SetMaxIdleConns(2)
 }

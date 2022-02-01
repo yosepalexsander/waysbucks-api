@@ -41,7 +41,6 @@ type OrderTopping struct {
 	Name string `db:"name" json:"name"`
 }
 
-// HTTP models for transaction
 type OrderRequest struct {
 	Product_Id  int     `json:"product_id" validate:"required"`
 	Qty         int     `json:"qty" validate:"required"`

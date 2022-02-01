@@ -6,8 +6,13 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/entity"
 )
 
+type AddressRepository interface {
+	AddressFinder
+	AddressMutator
+}
+
 type AddressFinder interface {
-	FindUserAddress(ctx context.Context, userID int) ([]entity.Address, error)
+	FindAllUserAddresses(ctx context.Context, userID int) ([]entity.Address, error)
 	FindAddress(ctx context.Context, id int) (*entity.Address, error)
 }
 

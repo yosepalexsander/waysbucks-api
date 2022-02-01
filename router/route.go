@@ -13,9 +13,9 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 
 		r.Route("/users", func(r chi.Router) {
 			r.Use(customMiddleware.Authentication)
-			r.Get("/{userID}", h.GetUser)
-			r.Put("/{userID}", h.UpdateUser)
-			r.Post("/{userID}/upload-avatar", h.UploadAvatar)
+			r.Get("/profile", h.GetUser)
+			r.Put("/profile", h.UpdateUser)
+			r.Post("/profile/upload-avatar", h.UploadAvatar)
 			r.Delete("/{userID}", h.DeleteUser)
 
 			r.Group(func(r chi.Router) {
@@ -25,7 +25,7 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 		})
 		r.Route("/address", func(r chi.Router) {
 			r.Use(customMiddleware.Authentication)
-			r.Get("/", h.GetUserAddress)
+			r.Get("/", h.GetUserAddresses)
 			r.Post("/", h.CreateAddress)
 			r.Put("/{addressID}", h.UpdateAddress)
 			r.Delete("/{addressID}", h.DeleteAddress)
@@ -56,7 +56,7 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 
 		r.Route("/carts", func(r chi.Router) {
 			r.Use(customMiddleware.Authentication)
-			r.Get("/", h.GetUserCarts)
+			r.Get("/", h.GetCarts)
 			r.Post("/", h.CreateCart)
 			r.Put("/{cartID}", h.UpdateCart)
 			r.Delete("/{cartID}", h.DeleteCart)

@@ -9,19 +9,15 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/repository"
 )
 
-type ProductRepo struct {
+type productRepo struct {
 	DB *sqlx.DB
 }
 
-func NewProductFinder(DB *sqlx.DB) repository.ProductFinder {
-	return &ProductRepo{DB}
+func NewProductRepository(DB *sqlx.DB) repository.ProductRepository {
+	return &productRepo{DB}
 }
 
-func NewProductMutator(DB *sqlx.DB) repository.ProductMutator {
-	return &ProductRepo{DB}
-}
-
-func (storage *ProductRepo) FindProducts(ctx context.Context, whereClauses []string, orderClause string) ([]entity.Product, error) {
+func (storage *productRepo) FindProducts(ctx context.Context, whereClauses []string, orderClause string) ([]entity.Product, error) {
 	sq := sq.Select("id", "name", "description", "image", "price", "is_available", "created_at", "updated_at").
 		From("products")
 
@@ -52,7 +48,7 @@ func (storage *ProductRepo) FindProducts(ctx context.Context, whereClauses []str
 	return products, nil
 }
 
-func (storage *ProductRepo) FindProduct(ctx context.Context, id int) (*entity.Product, error) {
+func (storage *productRepo) FindProduct(ctx context.Context, id int) (*entity.Product, error) {
 	sql, _, _ := sq.
 		Select("id", "name", "description", "image", "price", "is_available").
 		From("products").
@@ -67,7 +63,7 @@ func (storage *ProductRepo) FindProduct(ctx context.Context, id int) (*entity.Pr
 	return &product, nil
 }
 
-func (storage *ProductRepo) SaveProduct(ctx context.Context, product entity.Product) error {
+func (storage *productRepo) SaveProduct(ctx context.Context, product entity.Product) error {
 	sql, args, _ := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
 		Insert("products").
 		Columns("name", "description", "image", "price", "is_available").
@@ -82,7 +78,7 @@ func (storage *ProductRepo) SaveProduct(ctx context.Context, product entity.Prod
 	return nil
 }
 
-func (storage *ProductRepo) UpdateProduct(ctx context.Context, id int, newProduct map[string]interface{}) error {
+func (storage *productRepo) UpdateProduct(ctx context.Context, id int, newProduct map[string]interface{}) error {
 	sql, args, _ := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
 		Update("products").SetMap(newProduct).
 		Where(sq.Eq{"id": id}).ToSql()
@@ -96,11 +92,86 @@ func (storage *ProductRepo) UpdateProduct(ctx context.Context, id int, newProduc
 	return nil
 }
 
-func (storage *ProductRepo) DeleteProduct(ctx context.Context, id int) error {
+func (storage *productRepo) DeleteProduct(ctx context.Context, id int) error {
 	sql, _, _ := sq.Delete("products").Where("id=$1").ToSql()
 
 	_, err := storage.DB.ExecContext(ctx, sql, id)
 
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *productRepo) FindToppings(ctx context.Context) ([]entity.ProductTopping, error) {
+	sql, _, _ := sq.
+		Select("id", "name", "image", "price", "is_available").
+		From("toppings").OrderByClause("created_at DESC").ToSql()
+
+	var toppings []entity.ProductTopping
+
+	rows, err := s.DB.QueryxContext(ctx, sql)
+
+	for rows.Next() {
+		var topping entity.ProductTopping
+		err = rows.StructScan(&topping)
+
+		toppings = append(toppings, topping)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return toppings, nil
+}
+
+func (s *productRepo) FindTopping(ctx context.Context, id int) (*entity.ProductTopping, error) {
+	sql, _, _ := sq.
+		Select("id", "name", "image", "price", "is_available").
+		From("toppings").Where("id=$1").ToSql()
+
+	var topping entity.ProductTopping
+
+	err := s.DB.QueryRowxContext(ctx, sql, id).StructScan(&topping)
+	if err != nil {
+		return nil, err
+	}
+
+	return &topping, nil
+}
+
+func (s *productRepo) SaveTopping(ctx context.Context, topping entity.ProductTopping) error {
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+	sql, args, _ := psql.Insert("toppings").
+		Columns("name", "image", "price", "is_available").
+		Values(topping.Name, topping.Image, topping.Price, topping.Is_Available).ToSql()
+
+	_, err := s.DB.ExecContext(ctx, sql, args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *productRepo) UpdateTopping(ctx context.Context, id int, newData map[string]interface{}) error {
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+	sql, args, _ := psql.Update("toppings").SetMap(newData).Where(sq.Eq{"id": id}).ToSql()
+
+	_, err := s.DB.ExecContext(ctx, sql, args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *productRepo) DeleteTopping(ctx context.Context, id int) error {
+	sql, _, _ := sq.Delete("toppings").Where("id=$1").ToSql()
+
+	_, err := s.DB.ExecContext(ctx, sql, id)
 	if err != nil {
 		return err
 	}

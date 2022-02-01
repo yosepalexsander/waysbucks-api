@@ -1,7 +1,6 @@
 package helper
 
 import (
-	"log"
 	"os"
 	"time"
 
@@ -28,7 +27,6 @@ func GenerateToken(user *entity.User) (string, error) {
 	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
 	tokenString, tokenErr := token.SignedString(secretKey)
 	if tokenErr != nil {
-		log.Println(tokenErr)
 		return "", tokenErr
 	}
 
@@ -39,7 +37,6 @@ func VerifyToken(tokenString string) (*jwt.Token, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &MyClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("JWT_SECRET_KEY")), nil
 	})
-
 	if err != nil {
 		return nil, err
 	}

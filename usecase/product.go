@@ -13,18 +13,16 @@ import (
 )
 
 type ProductUseCase struct {
-	repository.ProductFinder
-	repository.ProductMutator
-	repository.ToppingRepository
+	repo repository.ProductRepository
 }
 
-func NewProductUseCase(rpf repository.ProductFinder, rpm repository.ProductMutator, rt repository.ToppingRepository) ProductUseCase {
-	return ProductUseCase{rpf, rpm, rt}
+func NewProductUseCase(repo repository.ProductRepository) ProductUseCase {
+	return ProductUseCase{repo}
 }
 
 func (u *ProductUseCase) GetProducts(ctx context.Context, params map[string][]string) ([]entity.Product, error) {
 	whereClauses, orderClauses := helper.QueryParamsToSqlClauses(params)
-	products, err := u.ProductFinder.FindProducts(ctx, whereClauses, orderClauses)
+	products, err := u.repo.FindProducts(ctx, whereClauses, orderClauses)
 
 	switch {
 	case err != nil:
@@ -56,7 +54,7 @@ func (u *ProductUseCase) GetProducts(ctx context.Context, params map[string][]st
 }
 
 func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity.Product, error) {
-	product, err := u.ProductFinder.FindProduct(ctx, productID)
+	product, err := u.repo.FindProduct(ctx, productID)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +70,7 @@ func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity
 func (u *ProductUseCase) CreateProduct(ctx context.Context, productReq entity.ProductRequest) error {
 	product := productFromRequest(productReq)
 
-	if err := u.ProductMutator.SaveProduct(ctx, product); err != nil {
+	if err := u.repo.SaveProduct(ctx, product); err != nil {
 		_ = thirdparty.RemoveFile(ctx, product.Name)
 		return err
 	}
@@ -81,15 +79,15 @@ func (u *ProductUseCase) CreateProduct(ctx context.Context, productReq entity.Pr
 }
 
 func (u *ProductUseCase) UpdateProduct(ctx context.Context, id int, newData map[string]interface{}) error {
-	return u.ProductMutator.UpdateProduct(ctx, id, newData)
+	return u.repo.UpdateProduct(ctx, id, newData)
 }
 
 func (u *ProductUseCase) DeleteProduct(ctx context.Context, id int) error {
-	return u.ProductMutator.DeleteProduct(ctx, id)
+	return u.repo.DeleteProduct(ctx, id)
 }
 
 func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductTopping, error) {
-	toppings, err := u.ToppingRepository.FindToppings(ctx)
+	toppings, err := u.repo.FindToppings(ctx)
 
 	switch {
 	case err != nil:
@@ -122,13 +120,13 @@ func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductToppi
 }
 
 func (u *ProductUseCase) GetTopping(ctx context.Context, id int) (*entity.ProductTopping, error) {
-	return u.FindTopping(ctx, id)
+	return u.repo.FindTopping(ctx, id)
 }
 
 func (u *ProductUseCase) CreateTopping(ctx context.Context, toppingReq entity.ProductToppingRequest) error {
 	topping := toppingFromRequest(toppingReq)
 
-	if err := u.ToppingRepository.SaveTopping(ctx, topping); err != nil {
+	if err := u.repo.SaveTopping(ctx, topping); err != nil {
 		_ = thirdparty.RemoveFile(ctx, topping.Name)
 		return err
 	}
@@ -137,7 +135,7 @@ func (u *ProductUseCase) CreateTopping(ctx context.Context, toppingReq entity.Pr
 }
 
 func (u *ProductUseCase) UpdateTopping(ctx context.Context, id int, newData map[string]interface{}) error {
-	return u.ToppingRepository.UpdateTopping(ctx, id, newData)
+	return u.repo.UpdateTopping(ctx, id, newData)
 }
 
 func (u *ProductUseCase) UpdateImage(ctx context.Context, file multipart.File, oldName string, newName string) error {
@@ -165,7 +163,7 @@ func (u *ProductUseCase) UpdateImage(ctx context.Context, file multipart.File, o
 }
 
 func (u *ProductUseCase) DeleteTopping(ctx context.Context, id int) error {
-	return u.ToppingRepository.DeleteTopping(ctx, id)
+	return u.repo.DeleteTopping(ctx, id)
 }
 
 func productFromRequest(req entity.ProductRequest) entity.Product {

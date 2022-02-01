@@ -16,7 +16,7 @@ type AddressHandler struct {
 	AddressUseCase usecase.AddressUseCase
 }
 
-func (s *AddressHandler) GetUserAddress(w http.ResponseWriter, r *http.Request) {
+func (s *AddressHandler) GetUserAddresses(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
 		Payload []entity.Address `json:"payload"`
@@ -30,7 +30,7 @@ func (s *AddressHandler) GetUserAddress(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	address, err := s.AddressUseCase.GetUserAddress(ctx, claims.UserID)
+	address, err := s.AddressUseCase.GetUserAddresses(ctx, claims.UserID)
 	if err != nil {
 		internalServerError(w)
 		return

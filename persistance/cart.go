@@ -47,7 +47,7 @@ func (storage *cartRepo) FindCarts(ctx context.Context, userID int) ([]entity.Ca
 	return carts, nil
 }
 
-func (storage *cartRepo) SaveToCart(ctx context.Context, cart entity.Cart) error {
+func (storage *cartRepo) SaveCart(ctx context.Context, cart entity.Cart) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	sql, args, _ := psql.Insert("carts").

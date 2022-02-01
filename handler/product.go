@@ -107,7 +107,7 @@ func (s *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	defer file.Close()
 
-	if err := helper.ValidateImageFile(header.Filename); err != nil {
+	if err := helper.ValidateImageFile(file, header.Filename); err != nil {
 		badRequest(w, "upload only for image")
 		return
 	}
@@ -305,7 +305,7 @@ func (s *ProductHandler) CreateTopping(w http.ResponseWriter, r *http.Request) {
 
 	defer file.Close()
 
-	if err := helper.ValidateImageFile(header.Filename); err != nil {
+	if err := helper.ValidateImageFile(file, header.Filename); err != nil {
 		badRequest(w, "upload only for image")
 	}
 
@@ -365,7 +365,7 @@ func (s *ProductHandler) UpdateTopping(w http.ResponseWriter, r *http.Request) {
 
 		defer file.Close()
 
-		if err := helper.ValidateImageFile(header.Filename); err != nil {
+		if err := helper.ValidateImageFile(file, header.Filename); err != nil {
 			badRequest(w, "upload only for image")
 			return
 		}
