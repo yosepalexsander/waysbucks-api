@@ -12,17 +12,15 @@ import (
 )
 
 type TransactionUseCase struct {
-	Finder        repository.TransactionFinder
-	Transactioner repository.TransactionTx
-	Mutator       repository.TransactionMutator
+	repo repository.TransactionRepository
 }
 
-func NewTransactionUseCase(f repository.TransactionFinder, t repository.TransactionTx, m repository.TransactionMutator) TransactionUseCase {
-	return TransactionUseCase{f, t, m}
+func NewTransactionUseCase(repo repository.TransactionRepository) TransactionUseCase {
+	return TransactionUseCase{repo}
 }
 
 func (u *TransactionUseCase) GetTransactions(ctx context.Context) ([]entity.Transaction, error) {
-	transactions, err := u.Finder.FindTransactions(ctx)
+	transactions, err := u.repo.FindTransactions(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +49,7 @@ func (u *TransactionUseCase) GetTransactions(ctx context.Context) ([]entity.Tran
 }
 
 func (u *TransactionUseCase) GetUserTransactions(ctx context.Context, userID int) ([]entity.Transaction, error) {
-	transactions, err := u.Finder.FindUserTransactions(ctx, userID)
+	transactions, err := u.repo.FindUserTransactions(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +77,7 @@ func (u *TransactionUseCase) GetUserTransactions(ctx context.Context, userID int
 }
 
 func (u *TransactionUseCase) GetDetailTransaction(ctx context.Context, id string) (*entity.Transaction, error) {
-	transaction, err := u.Finder.FindTransactionByID(ctx, id)
+	transaction, err := u.repo.FindTransactionByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +112,7 @@ func (u *TransactionUseCase) MakeTransaction(ctx context.Context, request entity
 }
 
 func (u *TransactionUseCase) orderTx(ctx context.Context, arg entity.TransactionTxParams) error {
-	txErr := u.Transactioner.ExecTx(ctx, func(tx repository.Transactioner) error {
+	txErr := u.repo.ExecTx(ctx, func(tx repository.Transactioner) error {
 		var err error
 
 		id, err := tx.CreateTransaction(ctx, arg.Transaction)
@@ -127,6 +125,7 @@ func (u *TransactionUseCase) orderTx(ctx context.Context, arg entity.Transaction
 			if err != nil {
 				return err
 			}
+
 			err = tx.DeleteCart(ctx, arg.Order[i].Product_Id, arg.Transaction.User_Id)
 			if err != nil {
 				return err
@@ -144,7 +143,7 @@ func (u *TransactionUseCase) orderTx(ctx context.Context, arg entity.Transaction
 }
 
 func (u *TransactionUseCase) UpdateTransaction(ctx context.Context, id string, data map[string]interface{}) error {
-	return u.Mutator.UpdateTransaction(ctx, id, data)
+	return u.repo.UpdateTransaction(ctx, id, data)
 }
 
 func transactionFromRequest(r entity.TransactionRequest) entity.TransactionTxParams {

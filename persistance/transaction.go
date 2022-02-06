@@ -20,16 +20,8 @@ type sqlConnTx struct {
 	db *sql.Tx
 }
 
-func NewTransactionFinder(db *sqlx.DB) repository.TransactionFinder {
-	return &transactionRepo{db: db}
-}
-
-func NewTransactionTx(db *sqlx.DB) repository.TransactionTx {
-	return &transactionRepo{db: db}
-}
-
-func NewTransactionMutator(db *sqlx.DB) repository.TransactionMutator {
-	return &transactionRepo{db: db}
+func NewTransactionRepository(db *sqlx.DB) repository.TransactionRepository {
+	return &transactionRepo{db}
 }
 
 func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.Transaction, error) {

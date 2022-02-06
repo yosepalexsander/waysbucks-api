@@ -31,8 +31,7 @@ func (i *Interactor) NewAppHandler() *AppHandler {
 
 func (i *Interactor) NewUserHandler() handler.UserHandler {
 	return handler.NewUserHandler(usecase.NewUserUseCase(
-		persistance.NewUserFinder(i.DB),
-		persistance.NewUserMutator(i.DB),
+		persistance.NewUserRepository(i.DB),
 	))
 }
 
@@ -51,14 +50,12 @@ func (i *Interactor) NewProductHandler() handler.ProductHandler {
 }
 
 func (i *Interactor) NewCartHandler() handler.CartHandler {
-	return handler.NewCartHandler(usecase.NewCartUseCase(persistance.NewCartRepo(i.DB)))
+	return handler.NewCartHandler(usecase.NewCartUseCase(persistance.NewCartRepository(i.DB)))
 }
 
 func (i *Interactor) NewTransasctionHandler() handler.TransactionHandler {
 	return handler.NewTransactionHandler(
 		usecase.NewTransactionUseCase(
-			persistance.NewTransactionFinder(i.DB),
-			persistance.NewTransactionTx(i.DB),
-			persistance.NewTransactionMutator(i.DB),
+			persistance.NewTransactionRepository(i.DB),
 		))
 }

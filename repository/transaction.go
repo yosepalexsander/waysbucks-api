@@ -6,6 +6,12 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/entity"
 )
 
+type TransactionRepository interface {
+	TransactionFinder
+	TransactionMutator
+	TransactionTx
+}
+
 type TransactionFinder interface {
 	FindTransactions(ctx context.Context) ([]entity.Transaction, error)
 	FindUserTransactions(ctx context.Context, userID int) ([]entity.Transaction, error)

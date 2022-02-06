@@ -11,11 +11,11 @@ import (
 )
 
 type addressRepo struct {
-	DB *sqlx.DB
+	db *sqlx.DB
 }
 
-func NewAddressRepository(DB *sqlx.DB) repository.AddressRepository {
-	return &addressRepo{DB}
+func NewAddressRepository(db *sqlx.DB) repository.AddressRepository {
+	return &addressRepo{db}
 }
 
 func (storage *addressRepo) SaveAddress(ctx context.Context, userID int, address entity.Address) error {
@@ -25,7 +25,7 @@ func (storage *addressRepo) SaveAddress(ctx context.Context, userID int, address
 		Columns("user_id", "name", "phone", "address", "city", "postal_code").
 		Values(userID, address.Name, address.Phone, address.Address, address.City, address.PostalCode).
 		ToSql()
-	_, err := storage.DB.ExecContext(ctx, sql, args...)
+	_, err := storage.db.ExecContext(ctx, sql, args...)
 
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func (storage *addressRepo) FindAllUserAddresses(ctx context.Context, userID int
 
 	addresses := []entity.Address{}
 
-	rows, err := storage.DB.QueryxContext(ctx, sql, userID)
+	rows, err := storage.db.QueryxContext(ctx, sql, userID)
 	for rows.Next() {
 		address := entity.Address{}
 		err = rows.StructScan(&address)
@@ -62,7 +62,7 @@ func (storage *addressRepo) FindAddress(ctx context.Context, id int) (*entity.Ad
 		From("user_address").Where("id=$1").ToSql()
 
 	var address entity.Address
-	err := storage.DB.QueryRowxContext(ctx, sql, id).StructScan(&address)
+	err := storage.db.QueryRowxContext(ctx, sql, id).StructScan(&address)
 
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (storage *addressRepo) UpdateAddress(ctx context.Context, id int, newAddres
 		Update("user_address").SetMap(newAddress).
 		Where(sq.Eq{"id": id}).ToSql()
 
-	_, err := storage.DB.ExecContext(ctx, sql, args...)
+	_, err := storage.db.ExecContext(ctx, sql, args...)
 
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func (storage *addressRepo) UpdateAddress(ctx context.Context, id int, newAddres
 
 func (storage *addressRepo) DeleteAddress(ctx context.Context, id int, userID int) error {
 	sql, _, _ := sq.Delete("user_address").Where("id=$1 AND user_id=$2").ToSql()
-	result, err := storage.DB.ExecContext(ctx, sql, id, userID)
+	result, err := storage.db.ExecContext(ctx, sql, id, userID)
 
 	if err != nil {
 		return err

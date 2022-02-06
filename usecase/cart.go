@@ -11,7 +11,7 @@ import (
 )
 
 type CartUseCase struct {
-	CartRepository repository.CartRepository
+	repo repository.CartRepository
 }
 
 func NewCartUseCase(r repository.CartRepository) CartUseCase {
@@ -19,7 +19,7 @@ func NewCartUseCase(r repository.CartRepository) CartUseCase {
 }
 
 func (u *CartUseCase) GetCarts(ctx context.Context, userID int) ([]entity.Cart, error) {
-	carts, err := u.CartRepository.FindCarts(ctx, userID)
+	carts, err := u.repo.FindCarts(ctx, userID)
 	switch {
 	case err != nil:
 		return nil, err
@@ -49,7 +49,7 @@ func (u *CartUseCase) GetCarts(ctx context.Context, userID int) ([]entity.Cart, 
 }
 
 func (u *CartUseCase) SaveCart(ctx context.Context, cart entity.Cart) error {
-	err := u.CartRepository.SaveCart(ctx, cart)
+	err := u.repo.SaveCart(ctx, cart)
 	if err != nil {
 		return err
 	}
@@ -58,9 +58,9 @@ func (u *CartUseCase) SaveCart(ctx context.Context, cart entity.Cart) error {
 }
 
 func (u *CartUseCase) UpdateCart(ctx context.Context, id int, userID int, data map[string]interface{}) error {
-	return u.CartRepository.UpdateCart(ctx, id, userID, data)
+	return u.repo.UpdateCart(ctx, id, userID, data)
 }
 
 func (u *CartUseCase) DeleteCart(ctx context.Context, id, userID int) error {
-	return u.CartRepository.DeleteCart(ctx, id, userID)
+	return u.repo.DeleteCart(ctx, id, userID)
 }

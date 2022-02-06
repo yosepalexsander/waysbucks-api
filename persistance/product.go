@@ -10,11 +10,11 @@ import (
 )
 
 type productRepo struct {
-	DB *sqlx.DB
+	db *sqlx.DB
 }
 
-func NewProductRepository(DB *sqlx.DB) repository.ProductRepository {
-	return &productRepo{DB}
+func NewProductRepository(db *sqlx.DB) repository.ProductRepository {
+	return &productRepo{db}
 }
 
 func (storage *productRepo) FindProducts(ctx context.Context, whereClauses []string, orderClause string) ([]entity.Product, error) {
@@ -34,7 +34,7 @@ func (storage *productRepo) FindProducts(ctx context.Context, whereClauses []str
 	sql, _, _ := sq.ToSql()
 	products := []entity.Product{}
 
-	rows, err := storage.DB.QueryxContext(ctx, sql)
+	rows, err := storage.db.QueryxContext(ctx, sql)
 	for rows.Next() {
 		product := entity.Product{}
 		err = rows.StructScan(&product)
@@ -55,7 +55,7 @@ func (storage *productRepo) FindProduct(ctx context.Context, id int) (*entity.Pr
 		Where("id=$1").ToSql()
 
 	var product entity.Product
-	err := storage.DB.QueryRowxContext(ctx, sql, id).StructScan(&product)
+	err := storage.db.QueryRowxContext(ctx, sql, id).StructScan(&product)
 	if err != nil {
 		return nil, err
 	}
@@ -67,9 +67,9 @@ func (storage *productRepo) SaveProduct(ctx context.Context, product entity.Prod
 	sql, args, _ := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).
 		Insert("products").
 		Columns("name", "description", "image", "price", "is_available").
-		Values(product.Name, product.Description, product.Image, product.Price, product.Is_Available).ToSql()
+		Values(product.Name, product.Description, product.Image, product.Price, product.IsAvailable).ToSql()
 
-	_, err := storage.DB.ExecContext(ctx, sql, args...)
+	_, err := storage.db.ExecContext(ctx, sql, args...)
 
 	if err != nil {
 		return err
@@ -83,7 +83,7 @@ func (storage *productRepo) UpdateProduct(ctx context.Context, id int, newProduc
 		Update("products").SetMap(newProduct).
 		Where(sq.Eq{"id": id}).ToSql()
 
-	_, err := storage.DB.ExecContext(ctx, sql, args...)
+	_, err := storage.db.ExecContext(ctx, sql, args...)
 
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func (storage *productRepo) UpdateProduct(ctx context.Context, id int, newProduc
 func (storage *productRepo) DeleteProduct(ctx context.Context, id int) error {
 	sql, _, _ := sq.Delete("products").Where("id=$1").ToSql()
 
-	_, err := storage.DB.ExecContext(ctx, sql, id)
+	_, err := storage.db.ExecContext(ctx, sql, id)
 
 	if err != nil {
 		return err
@@ -111,7 +111,7 @@ func (s *productRepo) FindToppings(ctx context.Context) ([]entity.ProductTopping
 
 	var toppings []entity.ProductTopping
 
-	rows, err := s.DB.QueryxContext(ctx, sql)
+	rows, err := s.db.QueryxContext(ctx, sql)
 
 	for rows.Next() {
 		var topping entity.ProductTopping
@@ -134,7 +134,7 @@ func (s *productRepo) FindTopping(ctx context.Context, id int) (*entity.ProductT
 
 	var topping entity.ProductTopping
 
-	err := s.DB.QueryRowxContext(ctx, sql, id).StructScan(&topping)
+	err := s.db.QueryRowxContext(ctx, sql, id).StructScan(&topping)
 	if err != nil {
 		return nil, err
 	}
@@ -146,9 +146,9 @@ func (s *productRepo) SaveTopping(ctx context.Context, topping entity.ProductTop
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.Insert("toppings").
 		Columns("name", "image", "price", "is_available").
-		Values(topping.Name, topping.Image, topping.Price, topping.Is_Available).ToSql()
+		Values(topping.Name, topping.Image, topping.Price, topping.IsAvailable).ToSql()
 
-	_, err := s.DB.ExecContext(ctx, sql, args...)
+	_, err := s.db.ExecContext(ctx, sql, args...)
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func (s *productRepo) UpdateTopping(ctx context.Context, id int, newData map[str
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.Update("toppings").SetMap(newData).Where(sq.Eq{"id": id}).ToSql()
 
-	_, err := s.DB.ExecContext(ctx, sql, args...)
+	_, err := s.db.ExecContext(ctx, sql, args...)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func (s *productRepo) UpdateTopping(ctx context.Context, id int, newData map[str
 func (s *productRepo) DeleteTopping(ctx context.Context, id int) error {
 	sql, _, _ := sq.Delete("toppings").Where("id=$1").ToSql()
 
-	_, err := s.DB.ExecContext(ctx, sql, id)
+	_, err := s.db.ExecContext(ctx, sql, id)
 	if err != nil {
 		return err
 	}

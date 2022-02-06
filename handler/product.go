@@ -69,13 +69,17 @@ func (s *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	product, err := s.ProductUseCase.GetProduct(ctx, productID)
 	if err != nil {
 		switch err {
-		case thirdparty.ErrServiceUnavailable:
-			serviceUnavailable(w, "error: cloudinary service unavailable")
 		case sql.ErrNoRows:
 			notFound(w)
 		default:
 			internalServerError(w)
 		}
+
+		return
+	}
+
+	if product.Image, err = thirdparty.GetImageUrl(ctx, product.Image); err != nil {
+		serviceUnavailable(w, "error: cloudinary service unavailable")
 		return
 	}
 
@@ -104,35 +108,29 @@ func (s *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		badRequest(w, fileErr.Error())
 		return
 	}
-
 	defer file.Close()
 
-	if err := helper.ValidateImageFile(file, header.Filename); err != nil {
+	if err := helper.ValidateImageFile(header.Header.Get("Content-Type")); err != nil {
 		badRequest(w, "upload only for image")
 		return
 	}
 
-	filename := strings.Split(header.Filename, ".")[0] + "-" + helper.RandString(15)
 	body := entity.ProductRequest{}
 
 	if err := schema.NewDecoder().Decode(&body, r.MultipartForm.Value); err != nil {
-		badRequest(w, "invalid request body")
+		badRequest(w, err.Error())
 		return
 	}
 
-	body.Image = filename
-
-	if isValid, msg := helper.Validate(body); !isValid {
-		badRequest(w, msg)
-		return
-	}
-
-	if err := thirdparty.UploadFile(ctx, file, filename); err != nil {
+	filename, err := thirdparty.UploadFile(ctx, file, header.Filename)
+	if err != nil {
 		internalServerError(w)
 		return
 	}
 
+	body.Image = filename
 	if err := s.ProductUseCase.CreateProduct(ctx, body); err != nil {
+		thirdparty.RemoveFile(ctx, filename)
 		internalServerError(w)
 		return
 	}
@@ -165,31 +163,29 @@ func (s *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 			badRequest(w, fileErr.Error())
 			return
 		}
-
 		defer file.Close()
 
 		product, err := s.ProductUseCase.GetProduct(ctx, productID)
 		if err != nil {
 			switch err {
-			case thirdparty.ErrServiceUnavailable:
-				serviceUnavailable(w, "error: cloudinary service unavailable")
 			case sql.ErrNoRows:
 				notFound(w)
 			default:
 				internalServerError(w)
 			}
+
 			return
 		}
 
-		filename := strings.Split(header.Filename, ".")[0] + "-" + helper.RandString(15)
-		body["image"] = filename
-
-		if err := s.ProductUseCase.UpdateProduct(ctx, productID, body); err != nil {
+		filename, err := thirdparty.UpdateImage(file, product.Image, header.Filename)
+		if err != nil {
 			internalServerError(w)
 			return
 		}
 
-		if err := s.ProductUseCase.UpdateImage(ctx, file, product.Image, filename); err != nil {
+		body["image"] = filename
+
+		if err := s.ProductUseCase.UpdateProduct(ctx, productID, body); err != nil {
 			internalServerError(w)
 			return
 		}
@@ -274,6 +270,7 @@ func (s *ProductHandler) GetToppings(w http.ResponseWriter, r *http.Request) {
 		default:
 			internalServerError(w)
 		}
+
 		return
 	}
 
@@ -283,7 +280,6 @@ func (s *ProductHandler) GetToppings(w http.ResponseWriter, r *http.Request) {
 		},
 		Payload: toppings,
 	}
-
 	resBody, _ := json.Marshal(responseStruct)
 
 	responseOK(w, resBody)
@@ -305,7 +301,7 @@ func (s *ProductHandler) CreateTopping(w http.ResponseWriter, r *http.Request) {
 
 	defer file.Close()
 
-	if err := helper.ValidateImageFile(file, header.Filename); err != nil {
+	if err := helper.ValidateImageFile(header.Header.Get("Content-Type")); err != nil {
 		badRequest(w, "upload only for image")
 	}
 
@@ -317,19 +313,15 @@ func (s *ProductHandler) CreateTopping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body.Image = filename
-
-	if isValid, msg := helper.Validate(body); !isValid {
-		badRequest(w, msg)
-		return
-	}
-
-	if err := s.ProductUseCase.CreateTopping(ctx, body); err != nil {
+	filename, err := thirdparty.UploadFile(ctx, file, filename)
+	if err != nil {
 		internalServerError(w)
 		return
 	}
 
-	if err := thirdparty.UploadFile(ctx, file, filename); err != nil {
+	body.Image = filename
+
+	if err := s.ProductUseCase.CreateTopping(ctx, body); err != nil {
 		internalServerError(w)
 		return
 	}
@@ -362,16 +354,12 @@ func (s *ProductHandler) UpdateTopping(w http.ResponseWriter, r *http.Request) {
 			badRequest(w, fileErr.Error())
 			return
 		}
-
 		defer file.Close()
 
-		if err := helper.ValidateImageFile(file, header.Filename); err != nil {
+		if err := helper.ValidateImageFile(header.Header.Get("Content-Type")); err != nil {
 			badRequest(w, "upload only for image")
 			return
 		}
-
-		filename := strings.Split(header.Filename, ".")[0] + "-" + helper.RandString(15)
-		body["image"] = filename
 
 		topping, err := s.ProductUseCase.GetTopping(ctx, toppingID)
 		if err != nil {
@@ -379,12 +367,15 @@ func (s *ProductHandler) UpdateTopping(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := s.ProductUseCase.UpdateTopping(ctx, toppingID, body); err != nil {
+		filename, err := thirdparty.UpdateImage(file, topping.Image, header.Filename)
+		if err != nil {
 			internalServerError(w)
 			return
 		}
 
-		if err := s.ProductUseCase.UpdateImage(ctx, file, topping.Image, filename); err != nil {
+		body["image"] = filename
+
+		if err := s.ProductUseCase.UpdateTopping(ctx, toppingID, body); err != nil {
 			internalServerError(w)
 			return
 		}

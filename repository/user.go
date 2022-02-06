@@ -6,6 +6,11 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/entity"
 )
 
+type UserRepository interface {
+	UserFinder
+	UserMutator
+}
+
 type UserFinder interface {
 	FindUsers(ctx context.Context) ([]entity.User, error)
 	FindUserById(ctx context.Context, id int) (*entity.User, error)

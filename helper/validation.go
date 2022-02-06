@@ -2,10 +2,6 @@ package helper
 
 import (
 	"errors"
-	"mime"
-	"mime/multipart"
-	"net/http"
-	"path"
 	"reflect"
 	"regexp"
 	"strings"
@@ -67,19 +63,8 @@ func addTranslation(v *validator.Validate, trans ut.Translator, tag string, errM
 	_ = v.RegisterTranslation(tag, trans, registerFn, transFn)
 }
 
-func ValidateImageFile(file multipart.File, filename string) error {
+func ValidateImageFile(fileType string) error {
 	regex, _ := regexp.Compile(`^image/(jpg|jpeg|png|svg\+xml)$`)
-	buff := make([]byte, 512)
-
-	_, err := file.Read(buff)
-	if err != nil {
-		return err
-	}
-
-	fileType := mime.TypeByExtension(path.Ext(filename))
-	if fileType == "" {
-		fileType = http.DetectContentType(buff)
-	}
 
 	if !regex.MatchString(fileType) {
 		return ErrorInvalidFileExtension

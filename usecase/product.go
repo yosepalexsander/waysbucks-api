@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"database/sql"
-	"mime/multipart"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/helper"
@@ -54,28 +53,13 @@ func (u *ProductUseCase) GetProducts(ctx context.Context, params map[string][]st
 }
 
 func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity.Product, error) {
-	product, err := u.repo.FindProduct(ctx, productID)
-	if err != nil {
-		return nil, err
-	}
-
-	if imageUrl, err := thirdparty.GetImageUrl(ctx, product.Image); err != nil {
-		return nil, thirdparty.ErrServiceUnavailable
-	} else {
-		product.Image = imageUrl
-		return product, nil
-	}
+	return u.repo.FindProduct(ctx, productID)
 }
 
 func (u *ProductUseCase) CreateProduct(ctx context.Context, productReq entity.ProductRequest) error {
 	product := productFromRequest(productReq)
 
-	if err := u.repo.SaveProduct(ctx, product); err != nil {
-		_ = thirdparty.RemoveFile(ctx, product.Name)
-		return err
-	}
-
-	return nil
+	return u.repo.SaveProduct(ctx, product)
 }
 
 func (u *ProductUseCase) UpdateProduct(ctx context.Context, id int, newData map[string]interface{}) error {
@@ -138,49 +122,25 @@ func (u *ProductUseCase) UpdateTopping(ctx context.Context, id int, newData map[
 	return u.repo.UpdateTopping(ctx, id, newData)
 }
 
-func (u *ProductUseCase) UpdateImage(ctx context.Context, file multipart.File, oldName string, newName string) error {
-	g, ctx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		if err := thirdparty.UploadFile(ctx, file, newName); err != nil {
-			return err
-		}
-		return nil
-	})
-
-	g.Go(func() error {
-		if err := thirdparty.RemoveFile(ctx, oldName); err != nil {
-			return err
-		}
-		return nil
-	})
-
-	if err := g.Wait(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (u *ProductUseCase) DeleteTopping(ctx context.Context, id int) error {
 	return u.repo.DeleteTopping(ctx, id)
 }
 
 func productFromRequest(req entity.ProductRequest) entity.Product {
 	return entity.Product{
-		Name:         req.Name,
-		Description:  req.Description,
-		Image:        req.Image,
-		Price:        req.Price,
-		Is_Available: req.Is_Available,
+		Name:        req.Name,
+		Description: req.Description,
+		Image:       req.Image,
+		Price:       req.Price,
+		IsAvailable: req.IsAvailable,
 	}
 }
 
 func toppingFromRequest(req entity.ProductToppingRequest) entity.ProductTopping {
 	return entity.ProductTopping{
-		Name:         req.Name,
-		Image:        req.Image,
-		Price:        req.Price,
-		Is_Available: req.Is_Available,
+		Name:        req.Name,
+		Image:       req.Image,
+		Price:       req.Price,
+		IsAvailable: req.IsAvailable,
 	}
 }

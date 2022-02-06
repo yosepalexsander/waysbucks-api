@@ -10,15 +10,11 @@ import (
 )
 
 type userRepo struct {
-	DB *sqlx.DB
+	db *sqlx.DB
 }
 
-func NewUserFinder(DB *sqlx.DB) repository.UserFinder {
-	return &userRepo{DB}
-}
-
-func NewUserMutator(DB *sqlx.DB) repository.UserMutator {
-	return &userRepo{DB}
+func NewUserRepository(db *sqlx.DB) repository.UserRepository {
+	return &userRepo{db}
 }
 
 func (storage *userRepo) FindUsers(ctx context.Context) ([]entity.User, error) {
@@ -28,7 +24,7 @@ func (storage *userRepo) FindUsers(ctx context.Context) ([]entity.User, error) {
 
 	users := []entity.User{}
 
-	rows, err := storage.DB.QueryxContext(ctx, sql, 0)
+	rows, err := storage.db.QueryxContext(ctx, sql, 0)
 	for rows.Next() {
 		user := entity.User{}
 		err = rows.StructScan(&user)
@@ -42,33 +38,34 @@ func (storage *userRepo) FindUsers(ctx context.Context) ([]entity.User, error) {
 	return users, nil
 }
 func (storage *userRepo) FindUserById(ctx context.Context, id int) (*entity.User, error) {
-	var user entity.User
+	var user = new(entity.User)
 
 	sql, _, _ := sq.
 		Select("id", "name", "email", "gender", "phone", "image", "is_admin").
 		From("users").Where("id=$1").ToSql()
-	err := storage.DB.QueryRowxContext(ctx, sql, id).StructScan(&user)
+
+	err := storage.db.QueryRowxContext(ctx, sql, id).StructScan(user)
 
 	if err != nil {
-		return &user, err
+		return nil, err
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func (storage *userRepo) FindUserByEmail(ctx context.Context, email string) (*entity.User, error) {
-	var user entity.User
+	user := new(entity.User)
 
 	sql, _, _ := sq.
 		Select("id", "name", "email", "password", "gender", "phone", "image", "is_admin").
 		From("users").Where("email=$1").ToSql()
-	err := storage.DB.QueryRowxContext(ctx, sql, email).StructScan(&user)
+	err := storage.db.QueryRowxContext(ctx, sql, email).StructScan(user)
 
 	if err != nil {
-		return &user, err
+		return nil, err
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func (storage *userRepo) SaveUser(ctx context.Context, user entity.User) error {
@@ -77,7 +74,7 @@ func (storage *userRepo) SaveUser(ctx context.Context, user entity.User) error {
 		Insert("users").
 		Columns("name", "email", "password", "gender", "phone", "image", "is_admin").
 		Values(user.Name, user.Email, user.Password, user.Gender, user.Phone, user.Image, user.IsAdmin).ToSql()
-	_, err := storage.DB.ExecContext(ctx, sql, args...)
+	_, err := storage.db.ExecContext(ctx, sql, args...)
 
 	if err != nil {
 		return err
@@ -93,7 +90,7 @@ func (storage *userRepo) UpdateUser(ctx context.Context, id int, newData map[str
 		Update("users").SetMap(newData).
 		Where(sq.Eq{"id": id}).ToSql()
 
-	_, err := storage.DB.ExecContext(ctx, sql, args...)
+	_, err := storage.db.ExecContext(ctx, sql, args...)
 
 	if err != nil {
 		return err
@@ -105,7 +102,7 @@ func (storage *userRepo) UpdateUser(ctx context.Context, id int, newData map[str
 func (storage *userRepo) DeleteUser(ctx context.Context, id int) error {
 	sql, _, _ := sq.
 		Delete("users").Where("id=$1").ToSql()
-	_, err := storage.DB.ExecContext(ctx, sql, id)
+	_, err := storage.db.ExecContext(ctx, sql, id)
 
 	if err != nil {
 		return err

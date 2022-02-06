@@ -11,12 +11,13 @@ import (
 )
 
 type cartRepo struct {
-	DB *sqlx.DB
+	db *sqlx.DB
 }
 
-func NewCartRepo(DB *sqlx.DB) repository.CartRepository {
-	return &cartRepo{DB}
+func NewCartRepository(db *sqlx.DB) repository.CartRepository {
+	return &cartRepo{db}
 }
+
 func (storage *cartRepo) FindCarts(ctx context.Context, userID int) ([]entity.Cart, error) {
 	sql, _, _ := sq.Select("id", "product_id", "topping_id", "price", "qty").From("carts").Where("user_id=$1").OrderByClause("id DESC").ToSql()
 	productSql, _, _ := sq.Select("id", "name", "image", "price").From("products").Where("id=$1").ToSql()
@@ -24,15 +25,15 @@ func (storage *cartRepo) FindCarts(ctx context.Context, userID int) ([]entity.Ca
 
 	carts := []entity.Cart{}
 
-	rows, err := storage.DB.QueryxContext(ctx, sql, userID)
+	rows, err := storage.db.QueryxContext(ctx, sql, userID)
 
 	for rows.Next() {
 		var cart entity.Cart
 		err = rows.Scan(&cart.Id, &cart.Product_Id, pq.Array(&cart.ToppingIds), &cart.Price, &cart.Qty)
-		_ = storage.DB.QueryRowxContext(ctx, productSql, cart.Product_Id).StructScan(&cart.Product)
+		_ = storage.db.QueryRowxContext(ctx, productSql, cart.Product_Id).StructScan(&cart.Product)
 		for _, v := range cart.ToppingIds {
 			var topping entity.CartTopping
-			toppingErr := storage.DB.QueryRowxContext(ctx, toppingSql, v).StructScan(&topping)
+			toppingErr := storage.db.QueryRowxContext(ctx, toppingSql, v).StructScan(&topping)
 			if toppingErr != nil {
 				err = toppingErr
 			}
@@ -54,7 +55,7 @@ func (storage *cartRepo) SaveCart(ctx context.Context, cart entity.Cart) error {
 		Columns("user_id", "product_id", "price", "qty", "topping_id").
 		Values(cart.User_Id, cart.Product_Id, cart.Price, cart.Qty, pq.Array(cart.ToppingIds)).ToSql()
 
-	_, err := storage.DB.ExecContext(ctx, sql, args...)
+	_, err := storage.db.ExecContext(ctx, sql, args...)
 	if err != nil {
 		return err
 	}
@@ -67,7 +68,7 @@ func (storage *cartRepo) UpdateCart(ctx context.Context, id int, userID int, dat
 
 	sql, args, _ := psql.Update("carts").SetMap(data).Where(sq.Eq{"id": id, "user_id": userID}).ToSql()
 
-	_, err := storage.DB.ExecContext(ctx, sql, args...)
+	_, err := storage.db.ExecContext(ctx, sql, args...)
 	if err != nil {
 		return err
 	}
@@ -80,7 +81,7 @@ func (storage *cartRepo) DeleteCart(ctx context.Context, id int, userID int) err
 
 	sql, args, _ := psql.Delete("carts").Where(sq.Eq{"id": id, "user_id": userID}).ToSql()
 
-	_, err := storage.DB.ExecContext(ctx, sql, args...)
+	_, err := storage.db.ExecContext(ctx, sql, args...)
 
 	if err != nil {
 		return err

@@ -1,15 +1,14 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
-	"strconv"
-	"strings"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/handler/middleware"
 	"github.com/yosepalexsander/waysbucks-api/helper"
+	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"github.com/yosepalexsander/waysbucks-api/usecase"
 )
 
@@ -52,9 +51,19 @@ func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
-		user, err := s.UserUseCase.FindUserById(ctx, claims.UserID)
+		user, err := s.UserUseCase.GetProfile(ctx, claims.UserID)
 		if err != nil {
-			notFound(w)
+			switch err {
+			case sql.ErrNoRows:
+				notFound(w)
+			default:
+				internalServerError(w)
+			}
+			return
+		}
+
+		if user.Image, err = thirdparty.GetImageUrl(ctx, user.Image); err != nil {
+			serviceUnavailable(w, "error: cloudinary service unavailable")
 			return
 		}
 
@@ -64,12 +73,11 @@ func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 			},
 			Payload: user,
 		}
-
 		resBody, _ := json.Marshal(responseStruct)
+
 		responseOK(w, resBody)
 	} else {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
 	}
 }
 
@@ -91,23 +99,23 @@ func (s *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		resp, _ := json.Marshal(commonResponse{
 			Message: "resource successfully updated",
 		})
+
 		responseOK(w, resp)
 	} else {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
 	}
 }
 
 func (s *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	if err := r.ParseMultipartForm(5 << 20); err != nil {
-		badRequest(w, "maximum upload size is 5 MB")
-		return
-	}
-
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
-		user, _ := s.UserUseCase.FindUserById(ctx, claims.UserID)
+		body := make(map[string]interface{})
+
+		if err := r.ParseMultipartForm(5 << 20); err != nil {
+			badRequest(w, "maximum upload size is 5 MB")
+			return
+		}
 
 		file, header, fileErr := r.FormFile("image")
 		if fileErr != nil {
@@ -116,20 +124,30 @@ func (s *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		}
 		defer file.Close()
 
-		if err := helper.ValidateImageFile(file, header.Filename); err != nil {
+		if err := helper.ValidateImageFile(header.Header.Get("Content-Type")); err != nil {
 			badRequest(w, "upload only for image")
 			return
 		}
-		filename := strings.Split(header.Filename, ".")[0] + "-" + helper.RandString(15)
 
-		body := make(map[string]interface{})
-		body["image"] = filename
+		user, err := s.UserUseCase.GetProfile(ctx, claims.UserID)
+		if err != nil {
+			switch err {
+			case sql.ErrNoRows:
+				notFound(w)
+			default:
+				internalServerError(w)
+			}
 
-		if err := s.UserUseCase.UpdateImage(ctx, file, user.Image, filename); err != nil {
+			return
+		}
+
+		filename, err := thirdparty.UpdateImage(file, user.Image, header.Filename)
+		if err != nil {
 			internalServerError(w)
 			return
 		}
 
+		body["image"] = filename
 		if err := s.UserUseCase.UpdateUser(ctx, claims.UserID, body); err != nil {
 			internalServerError(w)
 			return
@@ -138,33 +156,31 @@ func (s *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		resp, _ := json.Marshal(commonResponse{
 			Message: "resource has successfully created",
 		})
+
 		responseOK(w, resp)
+	} else {
+		w.WriteHeader(http.StatusUnprocessableEntity)
 	}
 }
 
 func (s *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
 
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
-		if claims.UserID != userID {
-			forbidden(w)
+		if err := s.UserUseCase.DeleteUser(ctx, claims.UserID); err != nil {
+			internalServerError(w)
 			return
 		}
+
+		resBody, _ := json.Marshal(commonResponse{
+			Message: "resource successfully deleted",
+		})
+
+		responseOK(w, resBody)
 	} else {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
 	}
 
-	if err := s.UserUseCase.DeleteUser(ctx, userID); err != nil {
-		internalServerError(w)
-		return
-	}
-
-	resBody, _ := json.Marshal(commonResponse{
-		Message: "resource successfully deleted",
-	})
-	responseOK(w, resBody)
 }
 
 func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
@@ -219,6 +235,7 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w)
 		return
 	}
+
 	responseStruct := response{
 		commonResponse: commonResponse{
 			Message: "resource successfully created",
@@ -229,13 +246,10 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	resBody, _ := json.Marshal(responseStruct)
+
 	responseOK(w, resBody)
 }
 
-// Handle login from client
-// If email not found in DB will return message error with code 404
-// If password is not match when compare with hashedPassword in DB
-// will return message error with code 400
 func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	type (
 		request struct {
@@ -276,6 +290,7 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w)
 		return
 	}
+
 	responseStruct := response{
 		commonResponse: commonResponse{
 			Message: "login success",
@@ -287,7 +302,7 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 			Token: tokenString,
 		},
 	}
-
 	resBody, _ := json.Marshal(responseStruct)
+
 	responseOK(w, resBody)
 }

@@ -2,42 +2,29 @@ package usecase
 
 import (
 	"context"
-	"mime/multipart"
-	"sync"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/repository"
-	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserUseCase struct {
-	Finder  repository.UserFinder
-	Mutator repository.UserMutator
+	repo repository.UserRepository
 }
 
-func NewUserUseCase(rf repository.UserFinder, rm repository.UserMutator) UserUseCase {
-	return UserUseCase{rf, rm}
+func NewUserUseCase(repo repository.UserRepository) UserUseCase {
+	return UserUseCase{repo}
 }
 
 func (u *UserUseCase) FindUsers(ctx context.Context) ([]entity.User, error) {
-	return u.Finder.FindUsers(ctx)
+	return u.repo.FindUsers(ctx)
 }
-func (u *UserUseCase) FindUserById(ctx context.Context, id int) (*entity.User, error) {
-	user, err := u.Finder.FindUserById(ctx, id)
-
-	if err != nil {
-		return nil, err
-	}
-	imageUrl, err := thirdparty.GetImageUrl(ctx, user.Image)
-	if imageUrl != "" || err == nil {
-		user.Image = imageUrl
-	}
-	return user, nil
+func (u *UserUseCase) GetProfile(ctx context.Context, id int) (*entity.User, error) {
+	return u.repo.FindUserById(ctx, id)
 }
 
 func (u *UserUseCase) FindUserByEmail(ctx context.Context, email string) (*entity.User, error) {
-	return u.Finder.FindUserByEmail(ctx, email)
+	return u.repo.FindUserByEmail(ctx, email)
 }
 
 func (u *UserUseCase) CreateNewUser(ctx context.Context, user entity.User) error {
@@ -49,7 +36,7 @@ func (u *UserUseCase) CreateNewUser(ctx context.Context, user entity.User) error
 
 	user.Password = hashedPassword
 
-	if err := u.Mutator.SaveUser(ctx, user); err != nil {
+	if err := u.repo.SaveUser(ctx, user); err != nil {
 		return err
 	}
 
@@ -76,44 +63,18 @@ func (u *UserUseCase) ChangePassword(ctx context.Context, id int, newPass string
 	newData := make(map[string]interface{}, 1)
 	newData["password"] = hashedPassword
 
-	if err := u.Mutator.UpdateUser(ctx, id, newData); err != nil {
+	if err := u.repo.UpdateUser(ctx, id, newData); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (u *UserUseCase) UpdateUser(ctx context.Context, id int, newData map[string]interface{}) error {
-	return u.Mutator.UpdateUser(ctx, id, newData)
+	return u.repo.UpdateUser(ctx, id, newData)
 }
 
-func (u *UserUseCase) UpdateImage(ctx context.Context, file multipart.File, oldName string, newName string) error {
-	wg := &sync.WaitGroup{}
-	var uploadErr error
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		if err := thirdparty.UploadFile(ctx, file, newName); err != nil {
-			uploadErr = err
-			return
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		if err := thirdparty.RemoveFile(ctx, oldName); err != nil {
-			uploadErr = err
-			return
-		}
-	}()
-	wg.Wait()
-
-	if uploadErr != nil {
-		return uploadErr
-	}
-
-	return nil
-}
 func (u *UserUseCase) DeleteUser(ctx context.Context, id int) error {
-	return u.Mutator.DeleteUser(ctx, id)
+	return u.repo.DeleteUser(ctx, id)
 }
 
 func hashPassword(password string) (string, error) {
