@@ -9,7 +9,7 @@ import (
 )
 
 type MyClaims struct {
-	UserID  int
+	UserID  string
 	IsAdmin bool
 	jwt.StandardClaims
 }

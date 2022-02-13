@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/repository"
 	"golang.org/x/crypto/bcrypt"
@@ -19,7 +20,7 @@ func NewUserUseCase(repo repository.UserRepository) UserUseCase {
 func (u *UserUseCase) FindUsers(ctx context.Context) ([]entity.User, error) {
 	return u.repo.FindUsers(ctx)
 }
-func (u *UserUseCase) GetProfile(ctx context.Context, id int) (*entity.User, error) {
+func (u *UserUseCase) GetProfile(ctx context.Context, id string) (*entity.User, error) {
 	return u.repo.FindUserById(ctx, id)
 }
 
@@ -29,11 +30,11 @@ func (u *UserUseCase) FindUserByEmail(ctx context.Context, email string) (*entit
 
 func (u *UserUseCase) CreateNewUser(ctx context.Context, user entity.User) error {
 	hashedPassword, err := hashPassword(user.Password)
-
 	if err != nil {
 		return err
 	}
 
+	user.Id = uuid.NewString()
 	user.Password = hashedPassword
 
 	if err := u.repo.SaveUser(ctx, user); err != nil {
@@ -53,7 +54,7 @@ func (u *UserUseCase) ValidatePassword(hashedPassword string, password string) e
 	return nil
 }
 
-func (u *UserUseCase) ChangePassword(ctx context.Context, id int, newPass string) error {
+func (u *UserUseCase) ChangePassword(ctx context.Context, id string, newPass string) error {
 	hashedPassword, err := hashPassword(newPass)
 
 	if err != nil {
@@ -69,11 +70,11 @@ func (u *UserUseCase) ChangePassword(ctx context.Context, id int, newPass string
 	return nil
 }
 
-func (u *UserUseCase) UpdateUser(ctx context.Context, id int, newData map[string]interface{}) error {
+func (u *UserUseCase) UpdateUser(ctx context.Context, id string, newData map[string]interface{}) error {
 	return u.repo.UpdateUser(ctx, id, newData)
 }
 
-func (u *UserUseCase) DeleteUser(ctx context.Context, id int) error {
+func (u *UserUseCase) DeleteUser(ctx context.Context, id string) error {
 	return u.repo.DeleteUser(ctx, id)
 }
 

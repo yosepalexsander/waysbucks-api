@@ -2,8 +2,8 @@ package router
 
 import (
 	"github.com/go-chi/chi/v5"
-	customMiddleware "github.com/yosepalexsander/waysbucks-api/handler/middleware"
 	"github.com/yosepalexsander/waysbucks-api/interactor"
+	customMiddleware "github.com/yosepalexsander/waysbucks-api/middleware"
 )
 
 func NewRouter(r *chi.Mux, h *interactor.AppHandler) {

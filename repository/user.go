@@ -13,12 +13,12 @@ type UserRepository interface {
 
 type UserFinder interface {
 	FindUsers(ctx context.Context) ([]entity.User, error)
-	FindUserById(ctx context.Context, id int) (*entity.User, error)
+	FindUserById(ctx context.Context, id string) (*entity.User, error)
 	FindUserByEmail(ctx context.Context, email string) (*entity.User, error)
 }
 
 type UserMutator interface {
 	SaveUser(ctx context.Context, user entity.User) error
-	UpdateUser(ctx context.Context, id int, newData map[string]interface{}) error
-	DeleteUser(ctx context.Context, id int) error
+	UpdateUser(ctx context.Context, id string, newData map[string]interface{}) error
+	DeleteUser(ctx context.Context, id string) error
 }

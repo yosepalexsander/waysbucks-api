@@ -18,7 +18,7 @@ func NewCartRepository(db *sqlx.DB) repository.CartRepository {
 	return &cartRepo{db}
 }
 
-func (storage *cartRepo) FindCarts(ctx context.Context, userID int) ([]entity.Cart, error) {
+func (storage *cartRepo) FindCarts(ctx context.Context, userID string) ([]entity.Cart, error) {
 	sql, _, _ := sq.Select("id", "product_id", "topping_id", "price", "qty").From("carts").Where("user_id=$1").OrderByClause("id DESC").ToSql()
 	productSql, _, _ := sq.Select("id", "name", "image", "price").From("products").Where("id=$1").ToSql()
 	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id= $1").ToSql()
@@ -63,7 +63,7 @@ func (storage *cartRepo) SaveCart(ctx context.Context, cart entity.Cart) error {
 	return nil
 }
 
-func (storage *cartRepo) UpdateCart(ctx context.Context, id int, userID int, data map[string]interface{}) error {
+func (storage *cartRepo) UpdateCart(ctx context.Context, id int, userID string, data map[string]interface{}) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	sql, args, _ := psql.Update("carts").SetMap(data).Where(sq.Eq{"id": id, "user_id": userID}).ToSql()
@@ -76,7 +76,7 @@ func (storage *cartRepo) UpdateCart(ctx context.Context, id int, userID int, dat
 	return nil
 }
 
-func (storage *cartRepo) DeleteCart(ctx context.Context, id int, userID int) error {
+func (storage *cartRepo) DeleteCart(ctx context.Context, id int, userID string) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	sql, args, _ := psql.Delete("carts").Where(sq.Eq{"id": id, "user_id": userID}).ToSql()

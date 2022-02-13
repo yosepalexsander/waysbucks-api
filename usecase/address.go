@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/repository"
 )
@@ -15,7 +16,7 @@ func NewAddressUseCase(repo repository.AddressRepository) AddressUseCase {
 	return AddressUseCase{repo}
 }
 
-func (u *AddressUseCase) GetUserAddresses(ctx context.Context, userID int) ([]entity.Address, error) {
+func (u *AddressUseCase) GetUserAddresses(ctx context.Context, userID string) ([]entity.Address, error) {
 	return u.repo.FindAllUserAddresses(ctx, userID)
 }
 
@@ -23,8 +24,9 @@ func (u *AddressUseCase) GetAddress(ctx context.Context, addressID int) (*entity
 	return u.repo.FindAddress(ctx, addressID)
 }
 
-func (u *AddressUseCase) CreateNewAddress(ctx context.Context, userID int, newAddress entity.AddressRequest) error {
+func (u *AddressUseCase) CreateNewAddress(ctx context.Context, userID string, newAddress entity.AddressRequest) error {
 	address := addressFromRequest(newAddress)
+	address.Id = uuid.NewString()
 	if err := u.repo.SaveAddress(ctx, userID, address); err != nil {
 		return err
 	}
@@ -35,7 +37,7 @@ func (u *AddressUseCase) UpdateAddress(ctx context.Context, addressID int, newAd
 	return u.repo.UpdateAddress(ctx, addressID, newAddress)
 }
 
-func (u *AddressUseCase) DeleteAddress(ctx context.Context, addressID int, userID int) error {
+func (u *AddressUseCase) DeleteAddress(ctx context.Context, addressID int, userID string) error {
 	return u.repo.DeleteAddress(ctx, addressID, userID)
 }
 

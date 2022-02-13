@@ -14,7 +14,7 @@ type TransactionRepository interface {
 
 type TransactionFinder interface {
 	FindTransactions(ctx context.Context) ([]entity.Transaction, error)
-	FindUserTransactions(ctx context.Context, userID int) ([]entity.Transaction, error)
+	FindUserTransactions(ctx context.Context, userID string) ([]entity.Transaction, error)
 	FindTransactionByID(ctx context.Context, id string) (*entity.Transaction, error)
 }
 
@@ -27,7 +27,7 @@ type TransactionTx interface {
 }
 
 type Transactioner interface {
-	DeleteCart(ctx context.Context, productID int, userID int) error
+	DeleteCart(ctx context.Context, productID int, userID string) error
 	CreateOrder(ctx context.Context, order entity.Order) error
 	CreateTransaction(ctx context.Context, tx entity.Transaction) (string, error)
 	Rollback() error

@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
+  id VARCHAR(36) PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   email VARCHAR(255) NOT NULL,
   password VARCHAR(255) NOT NULL,
@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS user_address (
-  id SERIAL PRIMARY KEY,
-  user_id INT,
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36),
   name VARCHAR(100) NOT NULL,
   phone VARCHAR(15) NOT NULL,
   address VARCHAR(255) NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS toppings (
 
 CREATE TABLE IF NOT EXISTS carts (
   id SERIAL PRIMARY KEY,
-  user_id INT NOT NULL,
+  user_id VARCHAR(36),
   product_id INT NOT NULL,
   topping_id INT ARRAY,
   price INT NOT NULL,
@@ -59,8 +59,8 @@ CREATE TABLE IF NOT EXISTS carts (
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
-  id VARCHAR(100) PRIMARY KEY,
-  user_id INT,
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36),
   name VARCHAR(100) NOT NULL,
   phone VARCHAR(15) NOT NULL,
   address VARCHAR(255) NOT NULL,

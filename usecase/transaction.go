@@ -48,7 +48,7 @@ func (u *TransactionUseCase) GetTransactions(ctx context.Context) ([]entity.Tran
 	return transactions, nil
 }
 
-func (u *TransactionUseCase) GetUserTransactions(ctx context.Context, userID int) ([]entity.Transaction, error) {
+func (u *TransactionUseCase) GetUserTransactions(ctx context.Context, userID string) ([]entity.Transaction, error) {
 	transactions, err := u.repo.FindUserTransactions(ctx, userID)
 	if err != nil {
 		return nil, err

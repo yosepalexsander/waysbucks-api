@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
-	"github.com/yosepalexsander/waysbucks-api/handler/middleware"
 	"github.com/yosepalexsander/waysbucks-api/helper"
+	"github.com/yosepalexsander/waysbucks-api/middleware"
 	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"github.com/yosepalexsander/waysbucks-api/usecase"
 )
@@ -196,6 +196,7 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		payload struct {
 			Name  string `json:"name"`
 			Email string `json:"email"`
+			Token string `json:"token"`
 		}
 		response struct {
 			commonResponse
@@ -217,7 +218,7 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user, _ := s.UserUseCase.FindUserByEmail(ctx, body.Email); user.Email == body.Email {
+	if user, err := s.UserUseCase.FindUserByEmail(ctx, body.Email); err == nil && user.Email == body.Email {
 		badRequest(w, "resource already exist")
 		return
 	}
@@ -236,6 +237,12 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tokenString, tokenErr := helper.GenerateToken(&newUser)
+	if tokenErr != nil {
+		internalServerError(w)
+		return
+	}
+
 	responseStruct := response{
 		commonResponse: commonResponse{
 			Message: "resource successfully created",
@@ -243,6 +250,7 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Payload: payload{
 			Name:  body.Name,
 			Email: body.Email,
+			Token: tokenString,
 		},
 	}
 	resBody, _ := json.Marshal(responseStruct)
@@ -257,7 +265,6 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 			Password string `json:"password"`
 		}
 		payload struct {
-			Id    int    `json:"id"`
 			Name  string `json:"name"`
 			Email string `json:"email"`
 			Token string `json:"token"`
@@ -296,7 +303,6 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 			Message: "login success",
 		},
 		Payload: payload{
-			Id:    user.Id,
 			Name:  user.Name,
 			Email: body.Email,
 			Token: tokenString,

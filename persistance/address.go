@@ -18,12 +18,12 @@ func NewAddressRepository(db *sqlx.DB) repository.AddressRepository {
 	return &addressRepo{db}
 }
 
-func (storage *addressRepo) SaveAddress(ctx context.Context, userID int, address entity.Address) error {
+func (storage *addressRepo) SaveAddress(ctx context.Context, userID string, address entity.Address) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.
 		Insert("user_address").
-		Columns("user_id", "name", "phone", "address", "city", "postal_code").
-		Values(userID, address.Name, address.Phone, address.Address, address.City, address.PostalCode).
+		Columns("id", "user_id", "name", "phone", "address", "city", "postal_code").
+		Values(address.Id, userID, address.Name, address.Phone, address.Address, address.City, address.PostalCode).
 		ToSql()
 	_, err := storage.db.ExecContext(ctx, sql, args...)
 
@@ -34,7 +34,7 @@ func (storage *addressRepo) SaveAddress(ctx context.Context, userID int, address
 	return nil
 }
 
-func (storage *addressRepo) FindAllUserAddresses(ctx context.Context, userID int) ([]entity.Address, error) {
+func (storage *addressRepo) FindAllUserAddresses(ctx context.Context, userID string) ([]entity.Address, error) {
 	sql, _, _ := sq.
 		Select("id", "name", "phone", "address", "city", "postal_code").
 		From("user_address").
@@ -86,7 +86,7 @@ func (storage *addressRepo) UpdateAddress(ctx context.Context, id int, newAddres
 	return nil
 }
 
-func (storage *addressRepo) DeleteAddress(ctx context.Context, id int, userID int) error {
+func (storage *addressRepo) DeleteAddress(ctx context.Context, id int, userID string) error {
 	sql, _, _ := sq.Delete("user_address").Where("id=$1 AND user_id=$2").ToSql()
 	result, err := storage.db.ExecContext(ctx, sql, id, userID)
 

@@ -61,7 +61,7 @@ func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.
 	return transactions, nil
 }
 
-func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID int) ([]entity.Transaction, error) {
+func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID string) ([]entity.Transaction, error) {
 	sql, _, _ := sq.Select("t.id", "t.name", "t.address", "t.phone", "t.city", "t.postal_code", "t.total", "t.status",
 		"json_agg(json_build_object('id', o.id, 'name', p.name,'image', p.image, 'topping_id', o.topping_id, 'price', o.price, 'qty', o.qty) ORDER BY o.id) AS order").
 		From("transactions AS t, orders AS o, products AS p").Where("t.id = o.transaction_id AND t.user_id = $1 AND o.product_id = p.id").GroupBy("t.id").
@@ -187,7 +187,7 @@ func (sct *sqlConnTx) CreateOrder(ctx context.Context, order entity.Order) error
 	return err
 }
 
-func (sct *sqlConnTx) DeleteCart(ctx context.Context, productID int, userID int) error {
+func (sct *sqlConnTx) DeleteCart(ctx context.Context, productID int, userID string) error {
 	var err error
 	sql, _, _ := sq.Delete("carts").Where("product_id=$1 AND user_id=$2").ToSql()
 

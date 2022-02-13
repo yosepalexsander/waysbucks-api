@@ -1,7 +1,7 @@
 package entity
 
 type User struct {
-	Id       int    `db:"id" json:"id"`
+	Id       string `db:"id" json:"id"`
 	Name     string `db:"name" json:"name"`
 	Email    string `db:"email" json:"email"`
 	Password string `db:"password" json:"-"`
@@ -12,13 +12,13 @@ type User struct {
 }
 
 type Address struct {
-	Id         int    `db:"id" json:"id"`
+	Id         string `db:"id" json:"id"`
 	Name       string `db:"name" json:"name"`
 	Phone      string `db:"phone" json:"phone"`
 	Address    string `db:"address" json:"address"`
 	City       string `db:"city" json:"city"`
 	PostalCode uint16 `db:"postal_code" json:"postal_code"`
-	UserId     int    `db:"user_id" json:"-"`
+	UserId     string `db:"user_id" json:"-"`
 }
 
 type AddressRequest struct {

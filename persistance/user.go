@@ -37,7 +37,7 @@ func (storage *userRepo) FindUsers(ctx context.Context) ([]entity.User, error) {
 
 	return users, nil
 }
-func (storage *userRepo) FindUserById(ctx context.Context, id int) (*entity.User, error) {
+func (storage *userRepo) FindUserById(ctx context.Context, id string) (*entity.User, error) {
 	var user = new(entity.User)
 
 	sql, _, _ := sq.
@@ -72,8 +72,8 @@ func (storage *userRepo) SaveUser(ctx context.Context, user entity.User) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.
 		Insert("users").
-		Columns("name", "email", "password", "gender", "phone", "image", "is_admin").
-		Values(user.Name, user.Email, user.Password, user.Gender, user.Phone, user.Image, user.IsAdmin).ToSql()
+		Columns("id", "name", "email", "password", "gender", "phone", "image", "is_admin").
+		Values(user.Id, user.Name, user.Email, user.Password, user.Gender, user.Phone, user.Image, user.IsAdmin).ToSql()
 	_, err := storage.db.ExecContext(ctx, sql, args...)
 
 	if err != nil {
@@ -83,7 +83,7 @@ func (storage *userRepo) SaveUser(ctx context.Context, user entity.User) error {
 	return nil
 }
 
-func (storage *userRepo) UpdateUser(ctx context.Context, id int, newData map[string]interface{}) error {
+func (storage *userRepo) UpdateUser(ctx context.Context, id string, newData map[string]interface{}) error {
 
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.
@@ -99,7 +99,7 @@ func (storage *userRepo) UpdateUser(ctx context.Context, id int, newData map[str
 	return nil
 }
 
-func (storage *userRepo) DeleteUser(ctx context.Context, id int) error {
+func (storage *userRepo) DeleteUser(ctx context.Context, id string) error {
 	sql, _, _ := sq.
 		Delete("users").Where("id=$1").ToSql()
 	_, err := storage.db.ExecContext(ctx, sql, id)

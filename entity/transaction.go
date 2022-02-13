@@ -10,8 +10,8 @@ type Transaction struct {
 	PostalCode int     `db:"postal_code" json:"postal_code"`
 	Total      int     `db:"total" json:"total"`
 	ServiceFee int     `json:"service_fee"`
-	User_Id    int     `db:"user_id" json:"-"`
 	Status     string  `db:"status" json:"status"`
+	User_Id    string  `db:"user_id" json:"-"`
 	Orders     []Order `json:"orders"`
 }
 
@@ -42,22 +42,22 @@ type OrderTopping struct {
 }
 
 type OrderRequest struct {
-	Product_Id  int     `json:"product_id" validate:"required"`
 	Qty         int     `json:"qty" validate:"required"`
 	Price       int     `json:"price" validate:"required"`
+	Product_Id  int     `json:"product_id" validate:"required"`
 	Topping_Ids []int64 `json:"topping_id"`
 }
 
 type TransactionRequest struct {
-	User_Id    int
 	Email      string         `json:"email" validate:"required"`
-	ServiceFee int            `json:"service_fee" validate:"required"`
 	Name       string         `json:"name" validate:"required"`
 	Address    string         `json:"address" validate:"required"`
 	City       string         `json:"city" validate:"required"`
-	PostalCode int            `json:"postal_code" validate:"required"`
 	Phone      string         `json:"phone" validate:"required"`
+	ServiceFee int            `json:"service_fee" validate:"required"`
+	PostalCode int            `json:"postal_code" validate:"required"`
 	Total      int            `json:"total" validate:"required"`
 	Status     string         `json:"status" validate:"required"`
 	Order      []OrderRequest `json:"orders" validate:"required"`
+	User_Id    string
 }

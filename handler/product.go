@@ -11,8 +11,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/schema"
 	"github.com/yosepalexsander/waysbucks-api/entity"
-	"github.com/yosepalexsander/waysbucks-api/handler/middleware"
 	"github.com/yosepalexsander/waysbucks-api/helper"
+	"github.com/yosepalexsander/waysbucks-api/middleware"
 	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"github.com/yosepalexsander/waysbucks-api/usecase"
 )
