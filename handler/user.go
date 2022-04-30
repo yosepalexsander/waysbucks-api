@@ -223,21 +223,13 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newUser := entity.User{
-		Name:     body.Name,
-		Email:    body.Email,
-		Password: body.Password,
-		Gender:   body.Gender,
-		Phone:    body.Phone,
-		IsAdmin:  body.IsAdmin,
-	}
-
-	if err := s.UserUseCase.CreateNewUser(ctx, newUser); err != nil {
+	user, err := s.UserUseCase.CreateNewUser(ctx, body.Name, body.Email, body.Password, body.Gender, body.Phone)
+	if err != nil {
 		internalServerError(w)
 		return
 	}
 
-	tokenString, tokenErr := helper.GenerateToken(&newUser)
+	tokenString, tokenErr := helper.GenerateToken(user.Id, user.IsAdmin)
 	if tokenErr != nil {
 		internalServerError(w)
 		return
@@ -292,7 +284,7 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenString, tokenErr := helper.GenerateToken(user)
+	tokenString, tokenErr := helper.GenerateToken(user.Id, user.IsAdmin)
 	if tokenErr != nil {
 		internalServerError(w)
 		return

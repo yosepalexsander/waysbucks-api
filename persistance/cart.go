@@ -29,15 +29,20 @@ func (storage *cartRepo) FindCarts(ctx context.Context, userID string) ([]entity
 
 	for rows.Next() {
 		var cart entity.Cart
-		err = rows.Scan(&cart.Id, &cart.Product_Id, pq.Array(&cart.ToppingIds), &cart.Price, &cart.Qty)
-		_ = storage.db.QueryRowxContext(ctx, productSql, cart.Product_Id).StructScan(&cart.Product)
-		for _, v := range cart.ToppingIds {
-			var topping entity.CartTopping
-			toppingErr := storage.db.QueryRowxContext(ctx, toppingSql, v).StructScan(&topping)
-			if toppingErr != nil {
-				err = toppingErr
+		err = rows.Scan(&cart.Id, &cart.ProductId, pq.Array(&cart.ToppingIds), &cart.Price, &cart.Qty)
+		_ = storage.db.QueryRowxContext(ctx, productSql, cart.ProductId).StructScan(&cart.Product)
+
+		if len(cart.ToppingIds) < 1 {
+			cart.Topping = make([]entity.CartTopping, 0)
+		} else {
+			for _, v := range cart.ToppingIds {
+				var topping entity.CartTopping
+				toppingErr := storage.db.QueryRowxContext(ctx, toppingSql, v).StructScan(&topping)
+				if toppingErr != nil {
+					err = toppingErr
+				}
+				cart.Topping = append(cart.Topping, topping)
 			}
-			cart.Topping = append(cart.Topping, topping)
 		}
 
 		carts = append(carts, cart)
@@ -53,7 +58,7 @@ func (storage *cartRepo) SaveCart(ctx context.Context, cart entity.Cart) error {
 
 	sql, args, _ := psql.Insert("carts").
 		Columns("user_id", "product_id", "price", "qty", "topping_id").
-		Values(cart.User_Id, cart.Product_Id, cart.Price, cart.Qty, pq.Array(cart.ToppingIds)).ToSql()
+		Values(cart.UserId, cart.ProductId, cart.Price, cart.Qty, pq.Array(cart.ToppingIds)).ToSql()
 
 	_, err := storage.db.ExecContext(ctx, sql, args...)
 	if err != nil {

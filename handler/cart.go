@@ -68,21 +68,19 @@ func (s *CartHandler) CreateCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body := entity.Cart{}
+	var body entity.CartRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		badRequest(w, "invalid request")
 		return
 	}
 
-	body.User_Id = claims.UserID
-
 	if valid, msg := helper.Validate(body); !valid {
 		badRequest(w, msg)
 		return
 	}
 
-	err := s.CartUseCase.SaveCart(ctx, body)
+	err := s.CartUseCase.SaveCart(ctx, body, claims.UserID)
 	if err != nil {
 		internalServerError(w)
 		return

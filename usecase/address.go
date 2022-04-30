@@ -20,8 +20,8 @@ func (u *AddressUseCase) GetUserAddresses(ctx context.Context, userID string) ([
 	return u.repo.FindAllUserAddresses(ctx, userID)
 }
 
-func (u *AddressUseCase) GetAddress(ctx context.Context, addressID int) (*entity.Address, error) {
-	return u.repo.FindAddress(ctx, addressID)
+func (u *AddressUseCase) GetAddress(ctx context.Context, id string) (*entity.Address, error) {
+	return u.repo.FindAddress(ctx, id)
 }
 
 func (u *AddressUseCase) CreateNewAddress(ctx context.Context, userID string, newAddress entity.AddressRequest) error {
@@ -33,12 +33,12 @@ func (u *AddressUseCase) CreateNewAddress(ctx context.Context, userID string, ne
 	return nil
 }
 
-func (u *AddressUseCase) UpdateAddress(ctx context.Context, addressID int, newAddress map[string]interface{}) error {
-	return u.repo.UpdateAddress(ctx, addressID, newAddress)
+func (u *AddressUseCase) UpdateAddress(ctx context.Context, id string, newAddress map[string]interface{}) error {
+	return u.repo.UpdateAddress(ctx, id, newAddress)
 }
 
-func (u *AddressUseCase) DeleteAddress(ctx context.Context, addressID int, userID string) error {
-	return u.repo.DeleteAddress(ctx, addressID, userID)
+func (u *AddressUseCase) DeleteAddress(ctx context.Context, id string, userID string) error {
+	return u.repo.DeleteAddress(ctx, id, userID)
 }
 
 func addressFromRequest(req entity.AddressRequest) entity.Address {

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
-	"github.com/yosepalexsander/waysbucks-api/helper"
 	"github.com/yosepalexsander/waysbucks-api/repository"
 	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"golang.org/x/sync/errgroup"
@@ -97,7 +96,7 @@ func (u *TransactionUseCase) GetDetailTransaction(ctx context.Context, id string
 }
 
 func (u *TransactionUseCase) MakeTransaction(ctx context.Context, request entity.TransactionRequest) (*entity.Transaction, error) {
-	transaction := transactionFromRequest(request)
+	transaction := entity.NewTransaction(request)
 	if err := u.orderTx(ctx, transaction); err != nil {
 		return nil, err
 	}
@@ -126,7 +125,7 @@ func (u *TransactionUseCase) orderTx(ctx context.Context, arg entity.Transaction
 				return err
 			}
 
-			err = tx.DeleteCart(ctx, arg.Order[i].Product_Id, arg.Transaction.User_Id)
+			err = tx.DeleteCart(ctx, arg.Order[i].ProductId, arg.Transaction.UserId)
 			if err != nil {
 				return err
 			}
@@ -144,38 +143,4 @@ func (u *TransactionUseCase) orderTx(ctx context.Context, arg entity.Transaction
 
 func (u *TransactionUseCase) UpdateTransaction(ctx context.Context, id string, data map[string]interface{}) error {
 	return u.repo.UpdateTransaction(ctx, id, data)
-}
-
-func transactionFromRequest(r entity.TransactionRequest) entity.TransactionTxParams {
-	var orders []entity.Order
-
-	for _, v := range r.Order {
-		orders = append(orders, orderFromRequest(v))
-	}
-
-	return entity.TransactionTxParams{
-		Transaction: entity.Transaction{
-			Id:         "ORDER-" + helper.RandString(20),
-			User_Id:    r.User_Id,
-			Name:       r.Name,
-			Email:      r.Email,
-			Address:    r.Address,
-			City:       r.City,
-			PostalCode: r.PostalCode,
-			Phone:      r.Phone,
-			Total:      r.Total,
-			ServiceFee: r.ServiceFee,
-			Status:     r.Status,
-		},
-		Order: orders,
-	}
-}
-
-func orderFromRequest(r entity.OrderRequest) entity.Order {
-	return entity.Order{
-		Product_Id:  r.Product_Id,
-		Qty:         r.Qty,
-		Price:       r.Price,
-		Topping_Ids: r.Topping_Ids,
-	}
 }

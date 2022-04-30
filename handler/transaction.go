@@ -46,7 +46,7 @@ func (s *TransactionHandler) CreateTransaction(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	body.User_Id = claims.UserID
+	body.UserId = claims.UserID
 	if valid, msg := helper.Validate(body); !valid {
 		badRequest(w, msg)
 	}

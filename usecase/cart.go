@@ -35,8 +35,6 @@ func (u *CartUseCase) GetCarts(ctx context.Context, userID string) ([]entity.Car
 			imageUrl, err := thirdparty.GetImageUrl(ctx, carts[i].Product.Image)
 			if err == nil && imageUrl != "" {
 				carts[i].Product.Image = imageUrl
-				carts[i].Product_Id = 0
-				carts[i].ToppingIds = nil
 			}
 			return err
 		})
@@ -48,7 +46,9 @@ func (u *CartUseCase) GetCarts(ctx context.Context, userID string) ([]entity.Car
 	return carts, nil
 }
 
-func (u *CartUseCase) SaveCart(ctx context.Context, cart entity.Cart) error {
+func (u *CartUseCase) SaveCart(ctx context.Context, req entity.CartRequest, userId string) error {
+	cart := entity.NewCart(req.ProductId, req.Price, req.Qty, req.ToppingIds, userId)
+
 	err := u.repo.SaveCart(ctx, cart)
 	if err != nil {
 		return err

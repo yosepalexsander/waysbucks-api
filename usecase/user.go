@@ -20,6 +20,7 @@ func NewUserUseCase(repo repository.UserRepository) UserUseCase {
 func (u *UserUseCase) FindUsers(ctx context.Context) ([]entity.User, error) {
 	return u.repo.FindUsers(ctx)
 }
+
 func (u *UserUseCase) GetProfile(ctx context.Context, id string) (*entity.User, error) {
 	return u.repo.FindUserById(ctx, id)
 }
@@ -28,20 +29,27 @@ func (u *UserUseCase) FindUserByEmail(ctx context.Context, email string) (*entit
 	return u.repo.FindUserByEmail(ctx, email)
 }
 
-func (u *UserUseCase) CreateNewUser(ctx context.Context, user entity.User) error {
-	hashedPassword, err := hashPassword(user.Password)
+func (u *UserUseCase) CreateNewUser(ctx context.Context, name string, email string, password string, gender string, phone string) (*entity.User, error) {
+	id, err := uuid.NewRandom()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	user.Id = uuid.NewString()
+	user := entity.NewUser(name, email, password, gender, phone)
+
+	hashedPassword, err := hashPassword(user.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	user.Id = id.String()
 	user.Password = hashedPassword
 
 	if err := u.repo.SaveUser(ctx, user); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &user, nil
 }
 
 func (u *UserUseCase) ValidatePassword(hashedPassword string, password string) error {
@@ -56,7 +64,6 @@ func (u *UserUseCase) ValidatePassword(hashedPassword string, password string) e
 
 func (u *UserUseCase) ChangePassword(ctx context.Context, id string, newPass string) error {
 	hashedPassword, err := hashPassword(newPass)
-
 	if err != nil {
 		return err
 	}
@@ -67,6 +74,7 @@ func (u *UserUseCase) ChangePassword(ctx context.Context, id string, newPass str
 	if err := u.repo.UpdateUser(ctx, id, newData); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -79,11 +87,10 @@ func (u *UserUseCase) DeleteUser(ctx context.Context, id string) error {
 }
 
 func hashPassword(password string) (string, error) {
-	bytes, encryptErr := bcrypt.GenerateFromPassword([]byte(password), 10)
-	if encryptErr != nil {
-		return "", encryptErr
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
 	}
-	hashedPassword := string(bytes)
 
-	return hashedPassword, nil
+	return string(hash), nil
 }

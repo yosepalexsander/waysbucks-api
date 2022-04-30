@@ -57,7 +57,7 @@ func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity
 }
 
 func (u *ProductUseCase) CreateProduct(ctx context.Context, productReq entity.ProductRequest) error {
-	product := productFromRequest(productReq)
+	product := entity.NewProduct(productReq)
 
 	return u.repo.SaveProduct(ctx, product)
 }
@@ -108,7 +108,7 @@ func (u *ProductUseCase) GetTopping(ctx context.Context, id int) (*entity.Produc
 }
 
 func (u *ProductUseCase) CreateTopping(ctx context.Context, toppingReq entity.ProductToppingRequest) error {
-	topping := toppingFromRequest(toppingReq)
+	topping := entity.NewProductTopping(toppingReq)
 
 	if err := u.repo.SaveTopping(ctx, topping); err != nil {
 		_ = thirdparty.RemoveFile(ctx, topping.Name)
@@ -124,23 +124,4 @@ func (u *ProductUseCase) UpdateTopping(ctx context.Context, id int, newData map[
 
 func (u *ProductUseCase) DeleteTopping(ctx context.Context, id int) error {
 	return u.repo.DeleteTopping(ctx, id)
-}
-
-func productFromRequest(req entity.ProductRequest) entity.Product {
-	return entity.Product{
-		Name:        req.Name,
-		Description: req.Description,
-		Image:       req.Image,
-		Price:       req.Price,
-		IsAvailable: req.IsAvailable,
-	}
-}
-
-func toppingFromRequest(req entity.ProductToppingRequest) entity.ProductTopping {
-	return entity.ProductTopping{
-		Name:        req.Name,
-		Image:       req.Image,
-		Price:       req.Price,
-		IsAvailable: req.IsAvailable,
-	}
 }

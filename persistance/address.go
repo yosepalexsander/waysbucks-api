@@ -56,7 +56,7 @@ func (storage *addressRepo) FindAllUserAddresses(ctx context.Context, userID str
 	return addresses, nil
 }
 
-func (storage *addressRepo) FindAddress(ctx context.Context, id int) (*entity.Address, error) {
+func (storage *addressRepo) FindAddress(ctx context.Context, id string) (*entity.Address, error) {
 	sql, _, _ := sq.
 		Select("id", "user_id", "name", "phone", "address", "city", "postal_code").
 		From("user_address").Where("id=$1").ToSql()
@@ -71,7 +71,7 @@ func (storage *addressRepo) FindAddress(ctx context.Context, id int) (*entity.Ad
 	return &address, nil
 }
 
-func (storage *addressRepo) UpdateAddress(ctx context.Context, id int, newAddress map[string]interface{}) error {
+func (storage *addressRepo) UpdateAddress(ctx context.Context, id string, newAddress map[string]interface{}) error {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.
 		Update("user_address").SetMap(newAddress).
@@ -86,7 +86,7 @@ func (storage *addressRepo) UpdateAddress(ctx context.Context, id int, newAddres
 	return nil
 }
 
-func (storage *addressRepo) DeleteAddress(ctx context.Context, id int, userID string) error {
+func (storage *addressRepo) DeleteAddress(ctx context.Context, id string, userID string) error {
 	sql, _, _ := sq.Delete("user_address").Where("id=$1 AND user_id=$2").ToSql()
 	result, err := storage.db.ExecContext(ctx, sql, id, userID)
 

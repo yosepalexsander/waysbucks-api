@@ -28,3 +28,13 @@ type AddressRequest struct {
 	City       string `json:"city" validate:"required"`
 	PostalCode uint16 `json:"postal_code" validate:"required"`
 }
+
+func NewUser(name string, email string, password string, gender string, phone string) User {
+	return User{
+		Name:     name,
+		Email:    email,
+		Password: password,
+		Gender:   gender,
+		Phone:    phone,
+	}
+}

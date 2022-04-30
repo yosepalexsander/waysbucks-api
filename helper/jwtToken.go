@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/yosepalexsander/waysbucks-api/entity"
 )
 
 type MyClaims struct {
@@ -14,10 +13,10 @@ type MyClaims struct {
 	jwt.StandardClaims
 }
 
-func GenerateToken(user *entity.User) (string, error) {
+func GenerateToken(id string, isAdmin bool) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, MyClaims{
-		UserID:  user.Id,
-		IsAdmin: user.IsAdmin,
+		UserID:  id,
+		IsAdmin: isAdmin,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 			Issuer:    "Waysbucks",

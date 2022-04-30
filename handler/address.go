@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/yosepalexsander/waysbucks-api/entity"
@@ -52,7 +51,7 @@ func (s *AddressHandler) GetAddress(w http.ResponseWriter, r *http.Request) {
 		Payload *entity.Address `json:"payload"`
 	}
 
-	addressID, _ := strconv.Atoi(chi.URLParam(r, "addressID"))
+	addressID := chi.URLParam(r, "addressID")
 	address, err := s.AddressUseCase.GetAddress(r.Context(), addressID)
 
 	if err != nil {
@@ -104,7 +103,7 @@ func (s *AddressHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 
 func (s *AddressHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	addressID, _ := strconv.Atoi(chi.URLParam(r, "addressID"))
+	addressID := chi.URLParam(r, "addressID")
 
 	address, err := s.AddressUseCase.GetAddress(ctx, addressID)
 
@@ -142,7 +141,7 @@ func (s *AddressHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 
 func (s *AddressHandler) DeleteAddress(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	addressID, _ := strconv.Atoi(chi.URLParam(r, "addressID"))
+	addressID := chi.URLParam(r, "addressID")
 
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
 		if err := s.AddressUseCase.DeleteAddress(ctx, addressID, claims.UserID); err != nil {
