@@ -11,11 +11,15 @@ import (
 )
 
 type CartUseCase struct {
-	CartRepository repository.CartRepository
+	repo repository.CartRepository
 }
 
-func (u *CartUseCase) GetUserCarts(ctx context.Context, userID int) ([]entity.Cart, error) {
-	carts, err := u.CartRepository.FindCarts(ctx, userID)
+func NewCartUseCase(r repository.CartRepository) CartUseCase {
+	return CartUseCase{r}
+}
+
+func (u *CartUseCase) GetCarts(ctx context.Context, userID string) ([]entity.Cart, error) {
+	carts, err := u.repo.FindCarts(ctx, userID)
 	switch {
 	case err != nil:
 		return nil, err
@@ -31,8 +35,6 @@ func (u *CartUseCase) GetUserCarts(ctx context.Context, userID int) ([]entity.Ca
 			imageUrl, err := thirdparty.GetImageUrl(ctx, carts[i].Product.Image)
 			if err == nil && imageUrl != "" {
 				carts[i].Product.Image = imageUrl
-				carts[i].Product_Id = 0
-				carts[i].ToppingIds = nil
 			}
 			return err
 		})
@@ -44,8 +46,10 @@ func (u *CartUseCase) GetUserCarts(ctx context.Context, userID int) ([]entity.Ca
 	return carts, nil
 }
 
-func (u *CartUseCase) SaveToCart(ctx context.Context, cart entity.Cart) error {
-	err := u.CartRepository.SaveToCart(ctx, cart)
+func (u *CartUseCase) SaveCart(ctx context.Context, req entity.CartRequest, userId string) error {
+	cart := entity.NewCart(req.ProductId, req.Price, req.Qty, req.ToppingIds, userId)
+
+	err := u.repo.SaveCart(ctx, cart)
 	if err != nil {
 		return err
 	}
@@ -53,10 +57,10 @@ func (u *CartUseCase) SaveToCart(ctx context.Context, cart entity.Cart) error {
 	return nil
 }
 
-func (u *CartUseCase) UpdateCart(ctx context.Context, id int, userID int, data map[string]interface{}) error {
-	return u.CartRepository.UpdateCart(ctx, id, userID, data)
+func (u *CartUseCase) UpdateCart(ctx context.Context, id int, userID string, data map[string]interface{}) error {
+	return u.repo.UpdateCart(ctx, id, userID, data)
 }
 
-func (u *CartUseCase) DeleteCart(ctx context.Context, id, userID int) error {
-	return u.CartRepository.DeleteCart(ctx, id, userID)
+func (u *CartUseCase) DeleteCart(ctx context.Context, id int, userID string) error {
+	return u.repo.DeleteCart(ctx, id, userID)
 }

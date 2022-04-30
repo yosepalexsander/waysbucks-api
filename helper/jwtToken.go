@@ -1,24 +1,22 @@
 package helper
 
 import (
-	"log"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/yosepalexsander/waysbucks-api/entity"
 )
 
 type MyClaims struct {
-	UserID  int
+	UserID  string
 	IsAdmin bool
 	jwt.StandardClaims
 }
 
-func GenerateToken(user *entity.User) (string, error) {
+func GenerateToken(id string, isAdmin bool) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, MyClaims{
-		UserID:  user.Id,
-		IsAdmin: user.IsAdmin,
+		UserID:  id,
+		IsAdmin: isAdmin,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 			Issuer:    "Waysbucks",
@@ -28,7 +26,6 @@ func GenerateToken(user *entity.User) (string, error) {
 	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
 	tokenString, tokenErr := token.SignedString(secretKey)
 	if tokenErr != nil {
-		log.Println(tokenErr)
 		return "", tokenErr
 	}
 
@@ -39,7 +36,6 @@ func VerifyToken(tokenString string) (*jwt.Token, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &MyClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("JWT_SECRET_KEY")), nil
 	})
-
 	if err != nil {
 		return nil, err
 	}

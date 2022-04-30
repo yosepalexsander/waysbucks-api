@@ -7,9 +7,17 @@ import (
 )
 
 type AddressRepository interface {
-	FindUserAddress(ctx context.Context, userID int) ([]entity.Address, error)
-	FindAddress(ctx context.Context, id int) (*entity.Address, error)
-	SaveAddress(ctx context.Context, address entity.Address) error
-	UpdateAddress(ctx context.Context, id int, newAddress map[string]interface{}) error
-	DeleteAddress(ctx context.Context, id int, userID int) error
+	AddressFinder
+	AddressMutator
+}
+
+type AddressFinder interface {
+	FindAllUserAddresses(ctx context.Context, userID string) ([]entity.Address, error)
+	FindAddress(ctx context.Context, id string) (*entity.Address, error)
+}
+
+type AddressMutator interface {
+	SaveAddress(ctx context.Context, userID string, address entity.Address) error
+	UpdateAddress(ctx context.Context, id string, newAddress map[string]interface{}) error
+	DeleteAddress(ctx context.Context, id string, userID string) error
 }

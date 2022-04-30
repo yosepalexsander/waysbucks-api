@@ -20,14 +20,14 @@ func Authentication(next http.Handler) http.Handler {
 		authValue := strings.TrimSpace(r.Header.Get("Authorization"))
 
 		if len(authValue) == 0 {
-			http.Error(w, "authorization header is invalid", http.StatusBadRequest)
+			http.Error(w, "Authorization header is invalid", http.StatusBadRequest)
 			return
 		}
 
 		bearerSplits := strings.Fields(authValue)
 
 		if len(bearerSplits) != 2 || bearerSplits[0] != "Bearer" {
-			http.Error(w, "authorization header is invalid", http.StatusBadRequest)
+			http.Error(w, "Authorization header is invalid", http.StatusBadRequest)
 			return
 		}
 

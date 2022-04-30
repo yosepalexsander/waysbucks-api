@@ -2,53 +2,54 @@ package usecase
 
 import (
 	"context"
-	"mime/multipart"
-	"sync"
 
+	"github.com/google/uuid"
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/repository"
-	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserUseCase struct {
-	UserRepository repository.UserRepository
+	repo repository.UserRepository
+}
+
+func NewUserUseCase(repo repository.UserRepository) UserUseCase {
+	return UserUseCase{repo}
 }
 
 func (u *UserUseCase) FindUsers(ctx context.Context) ([]entity.User, error) {
-	return u.UserRepository.FindUsers(ctx)
+	return u.repo.FindUsers(ctx)
 }
-func (u *UserUseCase) FindUserById(ctx context.Context, id int) (*entity.User, error) {
-	user, err := u.UserRepository.FindUserById(ctx, id)
 
-	if err != nil {
-		return nil, err
-	}
-	imageUrl, err := thirdparty.GetImageUrl(ctx, user.Image)
-	if imageUrl != "" || err == nil {
-		user.Image = imageUrl
-	}
-	return user, nil
+func (u *UserUseCase) GetProfile(ctx context.Context, id string) (*entity.User, error) {
+	return u.repo.FindUserById(ctx, id)
 }
 
 func (u *UserUseCase) FindUserByEmail(ctx context.Context, email string) (*entity.User, error) {
-	return u.UserRepository.FindUserByEmail(ctx, email)
+	return u.repo.FindUserByEmail(ctx, email)
 }
 
-func (u *UserUseCase) CreateNewUser(ctx context.Context, user entity.User) error {
-	hashedPassword, err := hashPassword(user.Password)
-
+func (u *UserUseCase) CreateNewUser(ctx context.Context, name string, email string, password string, gender string, phone string) (*entity.User, error) {
+	id, err := uuid.NewRandom()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	user := entity.NewUser(name, email, password, gender, phone)
+
+	hashedPassword, err := hashPassword(user.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	user.Id = id.String()
 	user.Password = hashedPassword
 
-	if err := u.UserRepository.SaveUser(ctx, user); err != nil {
-		return err
+	if err := u.repo.SaveUser(ctx, user); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return &user, nil
 }
 
 func (u *UserUseCase) ValidatePassword(hashedPassword string, password string) error {
@@ -61,9 +62,8 @@ func (u *UserUseCase) ValidatePassword(hashedPassword string, password string) e
 	return nil
 }
 
-func (u *UserUseCase) ChangePassword(ctx context.Context, id int, newPass string) error {
+func (u *UserUseCase) ChangePassword(ctx context.Context, id string, newPass string) error {
 	hashedPassword, err := hashPassword(newPass)
-
 	if err != nil {
 		return err
 	}
@@ -71,52 +71,26 @@ func (u *UserUseCase) ChangePassword(ctx context.Context, id int, newPass string
 	newData := make(map[string]interface{}, 1)
 	newData["password"] = hashedPassword
 
-	if err := u.UserRepository.UpdateUser(ctx, id, newData); err != nil {
+	if err := u.repo.UpdateUser(ctx, id, newData); err != nil {
 		return err
 	}
-	return nil
-}
-
-func (u *UserUseCase) UpdateUser(ctx context.Context, id int, newData map[string]interface{}) error {
-	return u.UserRepository.UpdateUser(ctx, id, newData)
-}
-
-func (u *UserUseCase) UpdateImage(ctx context.Context, file multipart.File, oldName string, newName string) error {
-	wg := &sync.WaitGroup{}
-	var uploadErr error
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		if err := thirdparty.UploadFile(ctx, file, newName); err != nil {
-			uploadErr = err
-			return
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		if err := thirdparty.RemoveFile(ctx, oldName); err != nil {
-			uploadErr = err
-			return
-		}
-	}()
-	wg.Wait()
-
-	if uploadErr != nil {
-		return uploadErr
-	}
 
 	return nil
 }
-func (u *UserUseCase) DeleteUser(ctx context.Context, id int) error {
-	return u.UserRepository.DeleteUser(ctx, id)
+
+func (u *UserUseCase) UpdateUser(ctx context.Context, id string, newData map[string]interface{}) error {
+	return u.repo.UpdateUser(ctx, id, newData)
+}
+
+func (u *UserUseCase) DeleteUser(ctx context.Context, id string) error {
+	return u.repo.DeleteUser(ctx, id)
 }
 
 func hashPassword(password string) (string, error) {
-	bytes, encryptErr := bcrypt.GenerateFromPassword([]byte(password), 10)
-	if encryptErr != nil {
-		return "", encryptErr
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
 	}
-	hashedPassword := string(bytes)
 
-	return hashedPassword, nil
+	return string(hash), nil
 }

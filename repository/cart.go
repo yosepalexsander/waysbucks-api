@@ -7,8 +7,8 @@ import (
 )
 
 type CartRepository interface {
-	FindCarts(ctx context.Context, userID int) ([]entity.Cart, error)
-	SaveToCart(ctx context.Context, cart entity.Cart) error
-	UpdateCart(ctx context.Context, id int, userID int, data map[string]interface{}) error
-	DeleteCart(ctx context.Context, id int, userID int) error
+	FindCarts(ctx context.Context, userID string) ([]entity.Cart, error)
+	SaveCart(ctx context.Context, cart entity.Cart) error
+	UpdateCart(ctx context.Context, id int, userID string, data map[string]interface{}) error
+	DeleteCart(ctx context.Context, id int, userID string) error
 }

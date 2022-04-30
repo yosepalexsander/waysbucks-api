@@ -16,21 +16,23 @@ const (
 
 func RandString(n int) string {
 	src := rand.NewSource(time.Now().UnixNano())
-	
+
 	sb := strings.Builder{}
 	sb.Grow(n)
 
 	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
 	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
-			if remain == 0 {
-					cache, remain = src.Int63(), letterIdxMax
-			}
-			if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
-					sb.WriteByte(letterBytes[idx])
-					i--
-			}
-			cache >>= letterIdxBits
-			remain--
+		if remain == 0 {
+			cache, remain = src.Int63(), letterIdxMax
+		}
+
+		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
+			sb.WriteByte(letterBytes[idx])
+			i--
+		}
+
+		cache >>= letterIdxBits
+		remain--
 	}
 
 	return sb.String()

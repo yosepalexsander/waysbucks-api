@@ -1,20 +1,23 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
-	"strconv"
-	"strings"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/yosepalexsander/waysbucks-api/entity"
-	"github.com/yosepalexsander/waysbucks-api/handler/middleware"
 	"github.com/yosepalexsander/waysbucks-api/helper"
+	"github.com/yosepalexsander/waysbucks-api/middleware"
+	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"github.com/yosepalexsander/waysbucks-api/usecase"
 )
 
 type UserHandler struct {
 	UserUseCase usecase.UserUseCase
+}
+
+func NewUserHandler(u usecase.UserUseCase) UserHandler {
+	return UserHandler{u}
 }
 
 func (s *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
@@ -41,89 +44,50 @@ func (s *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	type response struct {
 		commonResponse
 		Payload *entity.User `json:"payload"`
 	}
 
-	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
-	user, err := s.UserUseCase.FindUserById(r.Context(), userID)
+	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
+		user, err := s.UserUseCase.GetProfile(ctx, claims.UserID)
+		if err != nil {
+			switch err {
+			case sql.ErrNoRows:
+				notFound(w)
+			default:
+				internalServerError(w)
+			}
+			return
+		}
 
-	if err != nil {
-		notFound(w)
-		return
-	}
-	responseStruct := response{
-		commonResponse: commonResponse{
-			Message: "resource has successfully get",
-		},
-		Payload: user,
-	}
+		if user.Image, err = thirdparty.GetImageUrl(ctx, user.Image); err != nil {
+			serviceUnavailable(w, "error: cloudinary service unavailable")
+			return
+		}
 
-	resBody, _ := json.Marshal(responseStruct)
-	responseOK(w, resBody)
+		responseStruct := response{
+			commonResponse: commonResponse{
+				Message: "resource has successfully get",
+			},
+			Payload: user,
+		}
+		resBody, _ := json.Marshal(responseStruct)
+
+		responseOK(w, resBody)
+	} else {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+	}
 }
 
 func (s *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
 
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
-		if claims.UserID != userID {
-			forbidden(w)
-			return
-		}
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	var body map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		badRequest(w, "request invalid")
-		return
-	}
-
-	if err := s.UserUseCase.UpdateUser(ctx, userID, body); err != nil {
-		internalServerError(w)
-		return
-	}
-
-	resp, _ := json.Marshal(commonResponse{
-		Message: "resource successfully updated",
-	})
-	responseOK(w, resp)
-}
-
-func (s *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	if err := r.ParseMultipartForm(5 << 20); err != nil {
-		badRequest(w, "maximum upload size is 5 MB")
-		return
-	}
-
-	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
-		user, _ := s.UserUseCase.FindUserById(ctx, claims.UserID)
-
-		file, header, fileErr := r.FormFile("image")
-		if fileErr != nil {
-			badRequest(w, fileErr.Error())
-			return
-		}
-		defer file.Close()
-
-		if err := helper.ValidateImageFile(header.Filename); err != nil {
-			badRequest(w, "upload only for image")
-			return
-		}
-		filename := strings.Split(header.Filename, ".")[0] + helper.RandString(15)
-
-		body := make(map[string]interface{})
-		body["image"] = filename
-
-		if err := s.UserUseCase.UpdateImage(ctx, file, user.Image, filename); err != nil {
-			internalServerError(w)
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			badRequest(w, "request invalid")
 			return
 		}
 
@@ -133,35 +97,90 @@ func (s *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		}
 
 		resp, _ := json.Marshal(commonResponse{
+			Message: "resource successfully updated",
+		})
+
+		responseOK(w, resp)
+	} else {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+	}
+}
+
+func (s *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
+		body := make(map[string]interface{})
+
+		if err := r.ParseMultipartForm(5 << 20); err != nil {
+			badRequest(w, "maximum upload size is 5 MB")
+			return
+		}
+
+		file, header, fileErr := r.FormFile("image")
+		if fileErr != nil {
+			badRequest(w, fileErr.Error())
+			return
+		}
+		defer file.Close()
+
+		if err := helper.ValidateImageFile(header.Header.Get("Content-Type")); err != nil {
+			badRequest(w, "upload only for image")
+			return
+		}
+
+		user, err := s.UserUseCase.GetProfile(ctx, claims.UserID)
+		if err != nil {
+			switch err {
+			case sql.ErrNoRows:
+				notFound(w)
+			default:
+				internalServerError(w)
+			}
+
+			return
+		}
+
+		filename, err := thirdparty.UpdateImage(file, user.Image, header.Filename)
+		if err != nil {
+			internalServerError(w)
+			return
+		}
+
+		body["image"] = filename
+		if err := s.UserUseCase.UpdateUser(ctx, claims.UserID, body); err != nil {
+			internalServerError(w)
+			return
+		}
+
+		resp, _ := json.Marshal(commonResponse{
 			Message: "resource has successfully created",
 		})
+
 		responseOK(w, resp)
+	} else {
+		w.WriteHeader(http.StatusUnprocessableEntity)
 	}
 }
 
 func (s *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, _ := strconv.Atoi(chi.URLParam(r, "userID"))
 
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
-		if claims.UserID != userID {
-			forbidden(w)
+		if err := s.UserUseCase.DeleteUser(ctx, claims.UserID); err != nil {
+			internalServerError(w)
 			return
 		}
+
+		resBody, _ := json.Marshal(commonResponse{
+			Message: "resource successfully deleted",
+		})
+
+		responseOK(w, resBody)
 	} else {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
 	}
 
-	if err := s.UserUseCase.DeleteUser(ctx, userID); err != nil {
-		internalServerError(w)
-		return
-	}
-
-	resBody, _ := json.Marshal(commonResponse{
-		Message: "resource successfully deleted",
-	})
-	responseOK(w, resBody)
 }
 
 func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
@@ -177,6 +196,7 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		payload struct {
 			Name  string `json:"name"`
 			Email string `json:"email"`
+			Token string `json:"token"`
 		}
 		response struct {
 			commonResponse
@@ -198,24 +218,23 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user, _ := s.UserUseCase.FindUserByEmail(ctx, body.Email); user.Email == body.Email {
+	if user, err := s.UserUseCase.FindUserByEmail(ctx, body.Email); err == nil && user.Email == body.Email {
 		badRequest(w, "resource already exist")
 		return
 	}
 
-	newUser := entity.User{
-		Name:     body.Name,
-		Email:    body.Email,
-		Password: body.Password,
-		Gender:   body.Gender,
-		Phone:    body.Phone,
-		IsAdmin:  body.IsAdmin,
-	}
-
-	if err := s.UserUseCase.CreateNewUser(ctx, newUser); err != nil {
+	user, err := s.UserUseCase.CreateNewUser(ctx, body.Name, body.Email, body.Password, body.Gender, body.Phone)
+	if err != nil {
 		internalServerError(w)
 		return
 	}
+
+	tokenString, tokenErr := helper.GenerateToken(user.Id, user.IsAdmin)
+	if tokenErr != nil {
+		internalServerError(w)
+		return
+	}
+
 	responseStruct := response{
 		commonResponse: commonResponse{
 			Message: "resource successfully created",
@@ -223,16 +242,14 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Payload: payload{
 			Name:  body.Name,
 			Email: body.Email,
+			Token: tokenString,
 		},
 	}
 	resBody, _ := json.Marshal(responseStruct)
+
 	responseOK(w, resBody)
 }
 
-// Handle login from client
-// If email not found in DB will return message error with code 404
-// If password is not match when compare with hashedPassword in DB
-// will return message error with code 400
 func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	type (
 		request struct {
@@ -240,7 +257,6 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 			Password string `json:"password"`
 		}
 		payload struct {
-			Id    int    `json:"id"`
 			Name  string `json:"name"`
 			Email string `json:"email"`
 			Token string `json:"token"`
@@ -268,23 +284,23 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenString, tokenErr := helper.GenerateToken(user)
+	tokenString, tokenErr := helper.GenerateToken(user.Id, user.IsAdmin)
 	if tokenErr != nil {
 		internalServerError(w)
 		return
 	}
+
 	responseStruct := response{
 		commonResponse: commonResponse{
 			Message: "login success",
 		},
 		Payload: payload{
-			Id:    user.Id,
 			Name:  user.Name,
 			Email: body.Email,
 			Token: tokenString,
 		},
 	}
-
 	resBody, _ := json.Marshal(responseStruct)
+
 	responseOK(w, resBody)
 }

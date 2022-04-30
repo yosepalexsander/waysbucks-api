@@ -1,10 +1,13 @@
 package thirdparty
 
 import (
+	"encoding/json"
+	"io"
 	"os"
 	"strconv"
 
 	"github.com/midtrans/midtrans-go"
+	"github.com/midtrans/midtrans-go/coreapi"
 	"github.com/midtrans/midtrans-go/snap"
 	"github.com/yosepalexsander/waysbucks-api/entity"
 )
@@ -73,4 +76,14 @@ func generateSnapReq(t *entity.Transaction) *snap.Request {
 		Items: &orderItems,
 	}
 	return req
+}
+
+func ParseTransactionResponse(reqBody io.ReadCloser) (*coreapi.TransactionStatusResponse, error) {
+	transaction := new(coreapi.TransactionStatusResponse)
+
+	if err := json.NewDecoder(reqBody).Decode(transaction); err != nil {
+		return nil, err
+	}
+
+	return transaction, nil
 }

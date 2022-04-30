@@ -2,34 +2,38 @@ package router
 
 import (
 	"github.com/go-chi/chi/v5"
-	customMiddleware "github.com/yosepalexsander/waysbucks-api/handler/middleware"
 	"github.com/yosepalexsander/waysbucks-api/interactor"
+	customMiddleware "github.com/yosepalexsander/waysbucks-api/middleware"
 )
 
 func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Post("/register", h.Register)
-		r.Post("/login", h.Login)
-
-		r.Route("/users", func(r chi.Router) {
-			r.Use(customMiddleware.Authentication)
-			r.Get("/{userID}", h.GetUser)
-			r.Put("/{userID}", h.UpdateUser)
-			r.Post("/{userID}/upload-avatar", h.UploadAvatar)
-			r.Delete("/{userID}", h.DeleteUser)
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/register", h.Register)
+			r.Post("/login", h.Login)
 
 			r.Group(func(r chi.Router) {
-				r.Use(customMiddleware.AdminOnly)
-				r.Get("/", h.GetUsers)
+				r.Use(customMiddleware.Authentication)
+				r.Get("/account", h.GetUser)
+				r.Put("/account", h.UpdateUser)
+				r.Post("/account/avatar", h.UploadAvatar)
+				r.Delete("/account", h.DeleteUser)
 			})
 		})
+
+		r.Route("/users", func(r chi.Router) {
+			r.Use(customMiddleware.AdminOnly)
+			r.Get("/", h.GetUsers)
+		})
+
 		r.Route("/address", func(r chi.Router) {
 			r.Use(customMiddleware.Authentication)
-			r.Get("/", h.GetUserAddress)
+			r.Get("/", h.GetUserAddresses)
 			r.Post("/", h.CreateAddress)
 			r.Put("/{addressID}", h.UpdateAddress)
 			r.Delete("/{addressID}", h.DeleteAddress)
 		})
+
 		r.Route("/products", func(r chi.Router) {
 			r.Get("/", h.GetProducts)
 			r.Get("/{productID}", h.GetProduct)
@@ -42,6 +46,7 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 				r.Delete("/{productID}", h.DeleteProduct)
 			})
 		})
+
 		r.Route("/toppings", func(r chi.Router) {
 			r.Get("/", h.GetToppings)
 
@@ -56,7 +61,7 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 
 		r.Route("/carts", func(r chi.Router) {
 			r.Use(customMiddleware.Authentication)
-			r.Get("/", h.GetUserCarts)
+			r.Get("/", h.GetCarts)
 			r.Post("/", h.CreateCart)
 			r.Put("/{cartID}", h.UpdateCart)
 			r.Delete("/{cartID}", h.DeleteCart)
