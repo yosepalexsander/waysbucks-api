@@ -53,7 +53,19 @@ func (u *ProductUseCase) GetProducts(ctx context.Context, params map[string][]st
 }
 
 func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity.Product, error) {
-	return u.repo.FindProduct(ctx, productID)
+	product, err := u.repo.FindProduct(ctx, productID)
+
+	if err != nil {
+		return nil, err
+	}
+	if product == nil {
+		return nil, sql.ErrNoRows
+	}
+
+	imageUrl, _ := thirdparty.GetImageUrl(ctx, product.Image)
+	product.Image = imageUrl
+
+	return product, nil
 }
 
 func (u *ProductUseCase) CreateProduct(ctx context.Context, productReq entity.ProductRequest) error {

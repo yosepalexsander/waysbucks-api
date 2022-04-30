@@ -68,18 +68,15 @@ func (s *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 
 	product, err := s.ProductUseCase.GetProduct(ctx, productID)
 	if err != nil {
-		switch err {
-		case sql.ErrNoRows:
-			notFound(w)
-		default:
-			internalServerError(w)
+		if err == thirdparty.ErrServiceUnavailable {
+			serviceUnavailable(w, "error: cloudinary service unavailable")
+			return
 		}
-
-		return
-	}
-
-	if product.Image, err = thirdparty.GetImageUrl(ctx, product.Image); err != nil {
-		serviceUnavailable(w, "error: cloudinary service unavailable")
+		if err == sql.ErrNoRows {
+			notFound(w)
+			return
+		}
+		internalServerError(w)
 		return
 	}
 
