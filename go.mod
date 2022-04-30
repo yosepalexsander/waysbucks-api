@@ -18,7 +18,7 @@ require (
 	github.com/lib/pq v1.10.3
 	github.com/midtrans/midtrans-go v1.2.2
 	github.com/rs/cors v1.8.0
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
 )
 
 require (
