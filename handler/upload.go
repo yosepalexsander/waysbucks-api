@@ -22,7 +22,7 @@ func UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	folder := "waysbucks/avatars"
 
 	if err := r.ParseMultipartForm(5 << 20); err != nil {
-		badRequest(w, "maximum upload size is 5 MB")
+		badRequest(w, err.Error())
 		return
 	}
 
@@ -38,7 +38,7 @@ func UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename, err := thirdparty.UploadFile(ctx, file, folder, header.Filename)
+	filename, err := thirdparty.UploadFile(ctx, file, header.Filename, folder)
 	if err != nil {
 		internalServerError(w)
 		return
@@ -60,7 +60,7 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 	folder := "waysbucks"
 
 	if err := r.ParseMultipartForm(5 << 20); err != nil {
-		badRequest(w, "maximum upload size is 5 MB")
+		badRequest(w, err.Error())
 		return
 	}
 
@@ -76,7 +76,7 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename, err := thirdparty.UploadFile(ctx, file, folder, header.Filename)
+	filename, err := thirdparty.UploadFile(ctx, file, header.Filename, folder)
 	if err != nil {
 		internalServerError(w)
 		return

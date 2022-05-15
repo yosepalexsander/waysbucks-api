@@ -26,12 +26,13 @@ func UploadFile(ctx context.Context, file multipart.File, filename string, folde
 		return "", ErrServiceUnavailable
 	}
 
-	name := strings.Split(filename, ".")[0] + "-" + helper.RandString(15)
+	publicID := strings.Split(filename, ".")[0] + "-" + helper.RandString(15)
+	format := filepath.Ext(filename)
 
 	uploadResult, err := cld.Upload.Upload(
 		ctx,
 		file,
-		uploader.UploadParams{PublicID: name, Folder: folder, Format: filepath.Ext(filename)[1:]},
+		uploader.UploadParams{PublicID: publicID, Folder: folder, Format: format[1:]},
 	)
 
 	if err != nil {
