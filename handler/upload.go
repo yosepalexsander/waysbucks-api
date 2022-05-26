@@ -10,6 +10,7 @@ import (
 
 type responsePayload struct {
 	Filename string `json:"filename"`
+	Url      string `json:"url"`
 }
 
 type response struct {
@@ -38,7 +39,7 @@ func UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename, err := thirdparty.UploadFile(ctx, file, header.Filename, folder)
+	filename, url, err := thirdparty.UploadFile(ctx, file, header.Filename, folder)
 	if err != nil {
 		internalServerError(w)
 		return
@@ -49,6 +50,7 @@ func UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	},
 		Payload: responsePayload{
 			Filename: filename,
+			Url:      url,
 		},
 	})
 
@@ -76,7 +78,7 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename, err := thirdparty.UploadFile(ctx, file, header.Filename, folder)
+	filename, url, err := thirdparty.UploadFile(ctx, file, header.Filename, folder)
 	if err != nil {
 		internalServerError(w)
 		return
@@ -87,6 +89,7 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 	},
 		Payload: responsePayload{
 			Filename: filename,
+			Url:      url,
 		},
 	})
 

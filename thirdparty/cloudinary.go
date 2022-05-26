@@ -19,11 +19,11 @@ var (
 	ErrServiceUnavailable error = errors.New("object storage service unavailable")
 )
 
-func UploadFile(ctx context.Context, file multipart.File, filename string, folder string) (string, error) {
+func UploadFile(ctx context.Context, file multipart.File, filename string, folder string) (string, string, error) {
 	cld, err := cloudinary.NewFromURL(os.Getenv("CLOUDINARY_URL"))
 	if err != nil {
 		log.Printf("Failed to intialize Cloudinary\nerror: %v", err)
-		return "", ErrServiceUnavailable
+		return "", "", ErrServiceUnavailable
 	}
 
 	publicID := strings.Split(filename, ".")[0] + "-" + helper.RandString(15)
@@ -37,10 +37,10 @@ func UploadFile(ctx context.Context, file multipart.File, filename string, folde
 
 	if err != nil {
 		log.Printf("Failed to upload file\nerror: %v", err)
-		return "", err
+		return "", "", err
 	}
 
-	return uploadResult.PublicID, nil
+	return uploadResult.PublicID, uploadResult.SecureURL, nil
 }
 
 func GetImageUrl(ctx context.Context, publicID string) (string, error) {
