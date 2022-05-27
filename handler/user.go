@@ -106,63 +106,6 @@ func (s *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *UserHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
-		body := make(map[string]interface{})
-
-		if err := r.ParseMultipartForm(5 << 20); err != nil {
-			badRequest(w, "maximum upload size is 5 MB")
-			return
-		}
-
-		file, header, fileErr := r.FormFile("image")
-		if fileErr != nil {
-			badRequest(w, fileErr.Error())
-			return
-		}
-		defer file.Close()
-
-		if err := helper.ValidateImageFile(header.Header.Get("Content-Type")); err != nil {
-			badRequest(w, "upload only for image")
-			return
-		}
-
-		user, err := s.UserUseCase.GetProfile(ctx, claims.UserID)
-		if err != nil {
-			switch err {
-			case sql.ErrNoRows:
-				notFound(w)
-			default:
-				internalServerError(w)
-			}
-
-			return
-		}
-
-		filename, err := thirdparty.UpdateImage(file, user.Image, header.Filename)
-		if err != nil {
-			internalServerError(w)
-			return
-		}
-
-		body["image"] = filename
-		if err := s.UserUseCase.UpdateUser(ctx, claims.UserID, body); err != nil {
-			internalServerError(w)
-			return
-		}
-
-		resp, _ := json.Marshal(commonResponse{
-			Message: "resource has successfully created",
-		})
-
-		responseOK(w, resp)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-	}
-}
-
 func (s *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -218,7 +161,7 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user, err := s.UserUseCase.FindUserByEmail(ctx, body.Email); err == nil && user.Email == body.Email {
+	if user, err := s.UserUseCase.GetUserByEmail(ctx, body.Email); err == nil && user.Email == body.Email {
 		badRequest(w, "resource already exist")
 		return
 	}
@@ -273,7 +216,7 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.UserUseCase.FindUserByEmail(r.Context(), body.Email)
+	user, err := s.UserUseCase.GetUserByEmail(r.Context(), body.Email)
 	if err != nil {
 		notFound(w)
 		return

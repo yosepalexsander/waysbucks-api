@@ -14,11 +14,11 @@ type Product struct {
 }
 
 type ProductRequest struct {
-	Name        string `schema:"name,required"`
-	Description string `schema:"description,required"`
-	Image       string `schema:"image"`
-	Price       int    `schema:"price,required"`
-	IsAvailable bool   `schema:"is_available"`
+	Name        string `json:"name" validate:"required"`
+	Description string `json:"description" validate:"required"`
+	Image       string `json:"image" validate:"required"`
+	Price       int    `json:"price" validate:"required"`
+	IsAvailable bool   `json:"is_available"`
 }
 
 type ProductTopping struct {

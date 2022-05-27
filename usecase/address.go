@@ -26,10 +26,18 @@ func (u *AddressUseCase) GetAddress(ctx context.Context, id string) (*entity.Add
 
 func (u *AddressUseCase) CreateNewAddress(ctx context.Context, userID string, newAddress entity.AddressRequest) error {
 	address := addressFromRequest(newAddress)
-	address.Id = uuid.NewString()
+
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return err
+	}
+
+	address.Id = id.String()
+
 	if err := u.repo.SaveAddress(ctx, userID, address); err != nil {
 		return err
 	}
+
 	return nil
 }
 

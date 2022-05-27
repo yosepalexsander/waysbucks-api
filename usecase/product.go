@@ -58,9 +58,6 @@ func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity
 	if err != nil {
 		return nil, err
 	}
-	if product == nil {
-		return nil, sql.ErrNoRows
-	}
 
 	imageUrl, _ := thirdparty.GetImageUrl(ctx, product.Image)
 	product.Image = imageUrl
@@ -75,11 +72,52 @@ func (u *ProductUseCase) CreateProduct(ctx context.Context, productReq entity.Pr
 }
 
 func (u *ProductUseCase) UpdateProduct(ctx context.Context, id int, newData map[string]interface{}) error {
-	return u.repo.UpdateProduct(ctx, id, newData)
+	product, err := u.repo.FindProduct(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return u.repo.UpdateProduct(ctx, id, newData)
+	})
+
+	g.Go(func() error {
+		if newImage, ok := newData["image"]; ok && newImage != product.Image {
+			return thirdparty.RemoveFile(ctx, product.Image)
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (u *ProductUseCase) DeleteProduct(ctx context.Context, id int) error {
-	return u.repo.DeleteProduct(ctx, id)
+	product, err := u.repo.FindProduct(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return u.repo.DeleteProduct(ctx, id)
+	})
+
+	g.Go(func() error {
+		return thirdparty.RemoveFile(ctx, product.Image)
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductTopping, error) {
@@ -131,9 +169,50 @@ func (u *ProductUseCase) CreateTopping(ctx context.Context, toppingReq entity.Pr
 }
 
 func (u *ProductUseCase) UpdateTopping(ctx context.Context, id int, newData map[string]interface{}) error {
-	return u.repo.UpdateTopping(ctx, id, newData)
+	topping, err := u.repo.FindTopping(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	g, ctx := errgroup.WithContext(context.TODO())
+
+	g.Go(func() error {
+		return u.repo.UpdateTopping(ctx, id, newData)
+	})
+
+	g.Go(func() error {
+		if newImage, ok := newData["image"]; ok && newImage != topping.Image {
+			return thirdparty.RemoveFile(ctx, topping.Image)
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (u *ProductUseCase) DeleteTopping(ctx context.Context, id int) error {
-	return u.repo.DeleteTopping(ctx, id)
+	topping, err := u.repo.FindTopping(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return u.repo.DeleteTopping(ctx, id)
+	})
+
+	g.Go(func() error {
+		return thirdparty.RemoveFile(ctx, topping.Image)
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	return nil
 }

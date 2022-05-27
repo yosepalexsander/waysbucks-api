@@ -2,6 +2,7 @@ package router
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/yosepalexsander/waysbucks-api/handler"
 	"github.com/yosepalexsander/waysbucks-api/interactor"
 	customMiddleware "github.com/yosepalexsander/waysbucks-api/middleware"
 )
@@ -14,10 +15,9 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 
 			r.Group(func(r chi.Router) {
 				r.Use(customMiddleware.Authentication)
-				r.Get("/account", h.GetUser)
-				r.Put("/account", h.UpdateUser)
-				r.Post("/account/avatar", h.UploadAvatar)
-				r.Delete("/account", h.DeleteUser)
+				r.Get("/profile", h.GetUser)
+				r.Put("/profile", h.UpdateUser)
+				r.Delete("/profile", h.DeleteUser)
 			})
 		})
 
@@ -80,5 +80,11 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 		})
 
 		r.Post("/notification", h.PaymentNotification)
+
+		r.Route("/upload", func(r chi.Router) {
+			r.Use(customMiddleware.Authentication)
+			r.Post("/", handler.UploadImage)
+			r.Post("/avatar", handler.UploadAvatar)
+		})
 	})
 }
