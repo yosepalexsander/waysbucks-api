@@ -12,6 +12,7 @@ func NewRouter(r *chi.Mux, h *interactor.AppHandler) {
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", h.Register)
 			r.Post("/login", h.Login)
+			r.Post("/google/login", h.LoginOrRegisterWithGoogle)
 
 			r.Group(func(r chi.Router) {
 				r.Use(customMiddleware.Authentication)

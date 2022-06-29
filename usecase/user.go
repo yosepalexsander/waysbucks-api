@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/yosepalexsander/waysbucks-api/entity"
@@ -10,6 +11,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/sync/errgroup"
 )
+
+var ErrorInvalidPassword = errors.New("credential is invalid")
 
 type UserUseCase struct {
 	repo repository.UserRepository
