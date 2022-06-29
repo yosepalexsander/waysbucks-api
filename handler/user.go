@@ -1,15 +1,21 @@
 package handler
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"os"
+	"time"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/helper"
 	"github.com/yosepalexsander/waysbucks-api/middleware"
 	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"github.com/yosepalexsander/waysbucks-api/usecase"
+	"google.golang.org/api/oauth2/v2"
+	"google.golang.org/api/option"
 )
 
 type UserHandler struct {
@@ -53,12 +59,12 @@ func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	if claims, ok := ctx.Value(middleware.TokenCtxKey).(*helper.MyClaims); ok {
 		user, err := s.UserUseCase.GetProfile(ctx, claims.UserID)
 		if err != nil {
-			switch err {
-			case sql.ErrNoRows:
+			if err == sql.ErrNoRows {
 				notFound(w)
-			default:
-				internalServerError(w)
+				return
 			}
+
+			internalServerError(w)
 			return
 		}
 
@@ -136,15 +142,6 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 			Phone    string `json:"phone" validate:"required"`
 			IsAdmin  bool   `json:"is_admin"`
 		}
-		payload struct {
-			Name  string `json:"name"`
-			Email string `json:"email"`
-			Token string `json:"token"`
-		}
-		response struct {
-			commonResponse
-			Payload payload `json:"payload"`
-		}
 	)
 
 	ctx := r.Context()
@@ -178,13 +175,13 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responseStruct := response{
+	responseStruct := AuthResponse{
 		commonResponse: commonResponse{
 			Message: "resource successfully created",
 		},
-		Payload: payload{
-			Name:  body.Name,
-			Email: body.Email,
+		Payload: AuthResponsePayload{
+			Name:  user.Name,
+			Email: user.Email,
 			Token: tokenString,
 		},
 	}
@@ -196,17 +193,8 @@ func (s *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	type (
 		request struct {
-			Email    string `json:"email"`
-			Password string `json:"password"`
-		}
-		payload struct {
-			Name  string `json:"name"`
-			Email string `json:"email"`
-			Token string `json:"token"`
-		}
-		response struct {
-			commonResponse
-			Payload payload `json:"payload"`
+			Email    string `json:"email" validate:"required"`
+			Password string `json:"password" validate:"required"`
 		}
 	)
 
@@ -222,8 +210,14 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isValid, msg := helper.Validate(body)
+	if !isValid {
+		badRequest(w, msg)
+		return
+	}
+
 	if err := s.UserUseCase.ValidatePassword(user.Password, body.Password); err != nil {
-		badRequest(w, "credential is not valid")
+		badRequest(w, err.Error())
 		return
 	}
 
@@ -233,17 +227,149 @@ func (s *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responseStruct := response{
+	responseStruct := AuthResponse{
 		commonResponse: commonResponse{
 			Message: "login success",
 		},
-		Payload: payload{
+		Payload: AuthResponsePayload{
 			Name:  user.Name,
-			Email: body.Email,
+			Email: user.Email,
 			Token: tokenString,
 		},
 	}
 	resBody, _ := json.Marshal(responseStruct)
 
 	responseOK(w, resBody)
+}
+
+func (s *UserHandler) LoginOrRegisterWithGoogle(w http.ResponseWriter, r *http.Request) {
+	type request struct {
+		Token string `json:"token" validate:"required"`
+	}
+
+	ctx := r.Context()
+
+	var body request
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		badRequest(w, "Invalid request")
+		return
+	}
+
+	isValid, msg := helper.Validate(body)
+	if !isValid {
+		badRequest(w, msg)
+		return
+	}
+
+	userInfo, err := VerifyTokenID(body.Token)
+	if err != nil {
+		badRequest(w, "Invalid request")
+		return
+	}
+
+	clientId := os.Getenv("GOOGLE_CLIENT_ID")
+
+	if userInfo.Aud != clientId {
+		badRequest(w, "Google client is not valid")
+		return
+	}
+
+	user, err := s.UserUseCase.GetUserByEmail(ctx, userInfo.Email)
+	if err != nil && err != sql.ErrNoRows {
+		internalServerError(w)
+		return
+	}
+
+	if user == nil {
+		user, err = s.UserUseCase.CreateNewUser(ctx, userInfo.Name, userInfo.Email, "", "", "")
+		if err != nil {
+			internalServerError(w)
+			return
+		}
+
+	}
+
+	tokenString, tokenErr := helper.GenerateToken(user.Id, user.IsAdmin)
+	if tokenErr != nil {
+		internalServerError(w)
+		return
+	}
+
+	responseStruct := AuthResponse{
+		commonResponse: commonResponse{
+			Message: "login or register with google success",
+		},
+		Payload: AuthResponsePayload{
+			Name:  user.Name,
+			Email: user.Email,
+			Token: tokenString,
+		},
+	}
+	resBody, _ := json.Marshal(responseStruct)
+
+	responseOK(w, resBody)
+}
+
+func VerifyTokenID(idToken string) (*TokenInfo, error) {
+	authService, err := oauth2.NewService(context.TODO(), option.WithHTTPClient(http.DefaultClient))
+	if err != nil {
+		return nil, err
+	}
+
+	tokenInfoCall := authService.Tokeninfo()
+	tokenInfoCall.IdToken(idToken)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancelFunc()
+	tokenInfoCall.Context(ctx)
+
+	_, err = tokenInfoCall.Do()
+	if err != nil {
+		return nil, err
+	}
+
+	token, _, err := new(jwt.Parser).ParseUnverified(idToken, &TokenInfo{})
+	if tokenInfo, ok := token.Claims.(*TokenInfo); ok {
+		tokenInfo.ExpiresAt = tokenInfo.Exp
+		if err := tokenInfo.Valid(); err != nil {
+			return nil, err
+		}
+
+		return tokenInfo, nil
+	}
+
+	return nil, err
+}
+
+type (
+	AuthResponse struct {
+		commonResponse
+		Payload AuthResponsePayload `json:"payload"`
+	}
+	AuthResponsePayload struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+		Token string `json:"token"`
+	}
+)
+
+type TokenInfo struct {
+	Iss string `json:"iss"`
+	// userId
+	Sub string `json:"sub"`
+	Azp string `json:"azp"`
+	// clientId
+	Aud string `json:"aud"`
+	Iat int64  `json:"iat"`
+	// expired time
+	Exp int64 `json:"exp"`
+
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	AtHash        string `json:"at_hash"`
+	Name          string `json:"name"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Picture       string `json:"picture"`
+	Locale        string `json:"locale"`
+	jwt.StandardClaims
 }
