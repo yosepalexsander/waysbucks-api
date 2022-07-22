@@ -22,8 +22,8 @@ func (storage *addressRepo) SaveAddress(ctx context.Context, userID string, addr
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, args, _ := psql.
 		Insert("user_address").
-		Columns("id", "user_id", "name", "phone", "address", "city", "postal_code").
-		Values(address.Id, userID, address.Name, address.Phone, address.Address, address.City, address.PostalCode).
+		Columns("id", "user_id", "name", "phone", "address", "city", "postal_code", "longitude", "latitude").
+		Values(address.Id, userID, address.Name, address.Phone, address.Address, address.City, address.PostalCode, address.Longitude, address.Latitude).
 		ToSql()
 	_, err := storage.db.ExecContext(ctx, sql, args...)
 

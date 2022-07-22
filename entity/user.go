@@ -12,21 +12,25 @@ type User struct {
 }
 
 type Address struct {
-	Id         string `db:"id" json:"id"`
-	Name       string `db:"name" json:"name"`
-	Phone      string `db:"phone" json:"phone"`
-	Address    string `db:"address" json:"address"`
-	City       string `db:"city" json:"city"`
-	PostalCode uint16 `db:"postal_code" json:"postal_code"`
-	UserId     string `db:"user_id" json:"-"`
+	Id         string  `db:"id" json:"id"`
+	Name       string  `db:"name" json:"name"`
+	Phone      string  `db:"phone" json:"phone"`
+	Address    string  `db:"address" json:"address"`
+	City       string  `db:"city" json:"city"`
+	PostalCode uint16  `db:"postal_code" json:"postal_code"`
+	Longitude  float64 `db:"longitude" json:"longitude"`
+	Latitude   float64 `db:"latitude" json:"latitude"`
+	UserId     string  `db:"user_id" json:"-"`
 }
 
 type AddressRequest struct {
-	Name       string `json:"name" validate:"required"`
-	Phone      string `json:"phone" validate:"required"`
-	Address    string `json:"address" validate:"required"`
-	City       string `json:"city" validate:"required"`
-	PostalCode uint16 `json:"postal_code" validate:"required"`
+	Name       string  `json:"name" validate:"required"`
+	Phone      string  `json:"phone" validate:"required"`
+	Address    string  `json:"address" validate:"required"`
+	City       string  `json:"city" validate:"required"`
+	PostalCode uint16  `json:"postal_code" validate:"required"`
+	Longitude  float64 `json:"longitude" validate:"required"`
+	Latitude   float64 `json:"latitude" validate:"required"`
 }
 
 func NewUser(name string, email string, password string, gender string, phone string) User {
