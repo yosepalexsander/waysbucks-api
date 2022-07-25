@@ -56,5 +56,7 @@ func addressFromRequest(req entity.AddressRequest) entity.Address {
 		Address:    req.Address,
 		City:       req.City,
 		PostalCode: req.PostalCode,
+		Longitude:  req.Longitude,
+		Latitude:   req.Latitude,
 	}
 }
