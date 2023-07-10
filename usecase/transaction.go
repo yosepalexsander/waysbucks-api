@@ -2,12 +2,9 @@ package usecase
 
 import (
 	"context"
-	"time"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/repository"
-	"github.com/yosepalexsander/waysbucks-api/thirdparty"
-	"golang.org/x/sync/errgroup"
 )
 
 type TransactionUseCase struct {
@@ -18,30 +15,10 @@ func NewTransactionUseCase(repo repository.TransactionRepository) TransactionUse
 	return TransactionUseCase{repo}
 }
 
-func (u *TransactionUseCase) GetTransactions(ctx context.Context) ([]entity.Transaction, error) {
+func (u *TransactionUseCase) FindTransactions(ctx context.Context) ([]entity.Transaction, error) {
 	transactions, err := u.repo.FindTransactions(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	g := new(errgroup.Group)
-	for _, t := range transactions {
-		t := t
-		g.Go(func() error {
-			for i := range t.Orders {
-				imageUrl, err := thirdparty.GetImageUrl(ctx, t.Orders[i].Image)
-				if err != nil {
-					return err
-				}
-				t.Orders[i].Image = imageUrl
-			}
-			return nil
-		})
-
-	}
-
-	if err := g.Wait(); err != nil {
-		return nil, thirdparty.ErrServiceUnavailable
 	}
 
 	return transactions, nil
@@ -53,25 +30,6 @@ func (u *TransactionUseCase) GetUserTransactions(ctx context.Context, userID str
 		return nil, err
 	}
 
-	g := new(errgroup.Group)
-	for _, t := range transactions {
-		t := t
-		g.Go(func() error {
-			for i := range t.Orders {
-				imageUrl, err := thirdparty.GetImageUrl(ctx, t.Orders[i].Image)
-				if err != nil {
-					return err
-				}
-				t.Orders[i].Image = imageUrl
-			}
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return nil, thirdparty.ErrServiceUnavailable
-	}
-
 	return transactions, nil
 }
 
@@ -81,17 +39,6 @@ func (u *TransactionUseCase) GetDetailTransaction(ctx context.Context, id string
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	for i := range transaction.Orders {
-		imageUrl, err := thirdparty.GetImageUrl(ctx, transaction.Orders[i].Image)
-		if err != nil {
-			cancel()
-			return nil, thirdparty.ErrServiceUnavailable
-		}
-		transaction.Orders[i].Image = imageUrl
-	}
 	return transaction, err
 }
 
@@ -119,7 +66,7 @@ func (u *TransactionUseCase) orderTx(ctx context.Context, arg entity.Transaction
 			return err
 		}
 		for i := range arg.Order {
-			arg.Order[i].Transaction_Id = id
+			arg.Order[i].TransactionId = id
 			err := tx.CreateOrder(ctx, arg.Order[i])
 			if err != nil {
 				return err

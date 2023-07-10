@@ -28,15 +28,15 @@ func QueryParamsToSqlClauses(queries map[string][]string) ([]string, string) {
 		clauses := clauseRegex.FindStringSubmatch(k)
 
 		if len(clauses) < 2 {
-			whereClauses = append(whereClauses, fmt.Sprintf("%s = %v", field, value))
+			whereClauses = append(whereClauses, fmt.Sprintf("%s = %s", field, value))
 			continue
 		}
 
 		switch clauses[1] {
 		case "gte":
-			whereClauses = append(whereClauses, fmt.Sprintf("%s >= %v", field, value))
+			whereClauses = append(whereClauses, fmt.Sprintf("%s >= %s", field, value))
 		case "lte":
-			whereClauses = append(whereClauses, fmt.Sprintf("%s <= %v", field, value))
+			whereClauses = append(whereClauses, fmt.Sprintf("%s <= %s", field, value))
 		}
 	}
 

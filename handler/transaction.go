@@ -72,7 +72,7 @@ func (s *TransactionHandler) CreateTransaction(w http.ResponseWriter, r *http.Re
 	responseOK(w, resp)
 }
 
-func (s *TransactionHandler) GetTransactions(w http.ResponseWriter, r *http.Request) {
+func (s *TransactionHandler) FindTransactions(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
 		Payload []entity.Transaction `json:"payload"`
@@ -86,7 +86,7 @@ func (s *TransactionHandler) GetTransactions(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	transactions, err := s.TransactionUseCase.GetTransactions(ctx)
+	transactions, err := s.TransactionUseCase.FindTransactions(ctx)
 	if err != nil {
 		internalServerError(w)
 		return

@@ -2,6 +2,7 @@ package persistance
 
 import (
 	"context"
+	dbSql "database/sql"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -25,14 +26,18 @@ func (storage *userRepo) FindUsers(ctx context.Context) ([]entity.User, error) {
 	users := []entity.User{}
 
 	rows, err := storage.db.QueryxContext(ctx, sql, 0)
+	if err != nil {
+		if err == dbSql.ErrNoRows {
+			return users, nil
+		}
+
+		return nil, err
+	}
+
 	for rows.Next() {
 		user := entity.User{}
 		err = rows.StructScan(&user)
 		users = append(users, user)
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	return users, nil

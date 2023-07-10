@@ -3,6 +3,7 @@ package persistance
 import (
 	"context"
 	"database/sql"
+	dbSql "database/sql"
 	"encoding/json"
 
 	sq "github.com/Masterminds/squirrel"
@@ -30,11 +31,16 @@ func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.
 		From("transactions AS t, orders AS o, products AS p").Where("t.id = o.transaction_id AND o.product_id = p.id").GroupBy("t.id").
 		OrderByClause("t.created_at DESC").ToSql()
 
-	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id=$1").ToSql()
+	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id IN $1").ToSql()
 
-	var transactions []entity.Transaction
+	transactions := []entity.Transaction{}
+
 	rows, err := storage.db.QueryxContext(ctx, sql)
 	if err != nil {
+		if err == dbSql.ErrNoRows {
+			return transactions, nil
+		}
+
 		return nil, err
 	}
 
@@ -46,15 +52,22 @@ func (storage *transactionRepo) FindTransactions(ctx context.Context) ([]entity.
 		}
 		_ = json.Unmarshal(orderJSON, &t.Orders)
 		for i := range t.Orders {
-			for _, v := range t.Orders[i].Topping_Ids {
+			rows, err := storage.db.QueryxContext(ctx, toppingSql, pq.Array(t.Orders[i].ToppingIds))
+			if err != nil {
+				return nil, err
+			}
+
+			for rows.Next() {
 				var topping entity.OrderTopping
-				if err = storage.db.QueryRowxContext(ctx, toppingSql, v).Scan(&topping.Id, &topping.Name); err != nil {
+
+				err = rows.StructScan(&topping)
+				if err != nil {
 					return nil, err
 				}
 
 				t.Orders[i].Toppings = append(t.Orders[i].Toppings, topping)
 			}
-			t.Orders[i].Topping_Ids = nil
+			t.Orders[i].ToppingIds = nil
 		}
 		transactions = append(transactions, t)
 	}
@@ -69,9 +82,14 @@ func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID
 
 	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id=$1").ToSql()
 
-	var transactions []entity.Transaction
+	transactions := []entity.Transaction{}
+
 	rows, err := storage.db.QueryxContext(ctx, sql, userID)
 	if err != nil {
+		if err == dbSql.ErrNoRows {
+			return transactions, nil
+		}
+
 		return nil, err
 	}
 
@@ -83,7 +101,7 @@ func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID
 		}
 		_ = json.Unmarshal(orderJSON, &t.Orders)
 		for i := range t.Orders {
-			for _, v := range t.Orders[i].Topping_Ids {
+			for _, v := range t.Orders[i].ToppingIds {
 				var topping entity.OrderTopping
 				if err = storage.db.QueryRowxContext(ctx, toppingSql, v).Scan(&topping.Id, &topping.Name); err != nil {
 					return nil, err
@@ -91,7 +109,7 @@ func (storage *transactionRepo) FindUserTransactions(ctx context.Context, userID
 
 				t.Orders[i].Toppings = append(t.Orders[i].Toppings, topping)
 			}
-			t.Orders[i].Topping_Ids = nil
+			t.Orders[i].ToppingIds = nil
 		}
 		transactions = append(transactions, t)
 	}
@@ -113,7 +131,7 @@ func (storage *transactionRepo) FindTransactionByID(ctx context.Context, id stri
 	}
 	_ = json.Unmarshal(orderJSON, &t.Orders)
 	for i := range t.Orders {
-		for _, v := range t.Orders[i].Topping_Ids {
+		for _, v := range t.Orders[i].ToppingIds {
 			var topping entity.OrderTopping
 			if err := storage.db.QueryRowxContext(ctx, toppingSql, v).Scan(&topping.Id, &topping.Name); err != nil {
 				return nil, err
@@ -121,7 +139,7 @@ func (storage *transactionRepo) FindTransactionByID(ctx context.Context, id stri
 
 			t.Orders[i].Toppings = append(t.Orders[i].Toppings, topping)
 		}
-		t.Orders[i].Topping_Ids = nil
+		t.Orders[i].ToppingIds = nil
 	}
 	return &t, nil
 }
@@ -181,7 +199,7 @@ func (sct *sqlConnTx) CreateOrder(ctx context.Context, order entity.Order) error
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	var err error
 	sql, args, _ := psql.Insert("orders").Columns("transaction_id", "product_id", "topping_id", "price", "qty").
-		Values(order.Transaction_Id, order.ProductId, pq.Array(order.Topping_Ids), order.Price, order.Qty).ToSql()
+		Values(order.TransactionId, order.ProductId, pq.Array(order.ToppingIds), order.Price, order.Qty).ToSql()
 
 	_, err = sct.db.ExecContext(ctx, sql, args...)
 	return err

@@ -2,6 +2,7 @@ package persistance
 
 import (
 	"context"
+	dbSql "database/sql"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -32,17 +33,22 @@ func (storage *productRepo) FindProducts(ctx context.Context, whereClauses []str
 	}
 
 	sql, _, _ := sq.ToSql()
+
 	products := []entity.Product{}
 
 	rows, err := storage.db.QueryxContext(ctx, sql)
+	if err != nil {
+		if err == dbSql.ErrNoRows {
+			return products, nil
+		}
+
+		return nil, err
+	}
+
 	for rows.Next() {
 		product := entity.Product{}
 		err = rows.StructScan(&product)
 		products = append(products, product)
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	return products, nil
@@ -109,7 +115,7 @@ func (s *productRepo) FindToppings(ctx context.Context) ([]entity.ProductTopping
 		Select("id", "name", "image", "price", "is_available").
 		From("toppings").OrderByClause("created_at DESC").ToSql()
 
-	var toppings []entity.ProductTopping
+	toppings := []entity.ProductTopping{}
 
 	rows, err := s.db.QueryxContext(ctx, sql)
 

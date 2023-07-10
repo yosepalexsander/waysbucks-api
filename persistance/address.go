@@ -2,6 +2,7 @@ package persistance
 
 import (
 	"context"
+	dbSql "database/sql"
 	"errors"
 
 	sq "github.com/Masterminds/squirrel"
@@ -43,14 +44,18 @@ func (storage *addressRepo) FindAllUserAddresses(ctx context.Context, userID str
 	addresses := []entity.Address{}
 
 	rows, err := storage.db.QueryxContext(ctx, sql, userID)
+	if err != nil {
+		if err == dbSql.ErrNoRows {
+			return addresses, nil
+		}
+
+		return nil, err
+	}
+
 	for rows.Next() {
 		address := entity.Address{}
 		err = rows.StructScan(&address)
 		addresses = append(addresses, address)
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	return addresses, nil
