@@ -2,10 +2,10 @@ package db
 
 import (
 	"log"
-	"os"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/yosepalexsander/waysbucks-api/config"
 )
 
 type DBStore struct {
@@ -14,7 +14,7 @@ type DBStore struct {
 
 func Connect(db *DBStore) {
 	var err error
-	db.DB, err = sqlx.Connect("postgres", os.Getenv("DATABASE_URL"))
+	db.DB, err = sqlx.Connect("postgres", config.DATABASE_URL)
 	if err != nil {
 		log.Fatal(err)
 	}

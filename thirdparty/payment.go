@@ -3,18 +3,18 @@ package thirdparty
 import (
 	"encoding/json"
 	"io"
-	"os"
 	"strconv"
 
 	"github.com/midtrans/midtrans-go"
 	"github.com/midtrans/midtrans-go/coreapi"
 	"github.com/midtrans/midtrans-go/snap"
+	"github.com/yosepalexsander/waysbucks-api/config"
 	"github.com/yosepalexsander/waysbucks-api/entity"
 )
 
 func setupGlobalMidtransConfig() {
-	midtrans.ServerKey = os.Getenv("MIDTRANS_SERVER_KEY")
-	midtrans.ClientKey = os.Getenv("MIDTRANS_CLIENT_KEY")
+	midtrans.ServerKey = config.MIDTRANS_SERVER_KEY
+	midtrans.ClientKey = config.MIDTRANS_CLIENT_KEY
 	midtrans.Environment = midtrans.Sandbox
 }
 
