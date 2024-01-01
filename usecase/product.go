@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/helper"
@@ -19,34 +18,11 @@ func NewProductUseCase(repo repository.ProductRepository) ProductUseCase {
 	return ProductUseCase{repo}
 }
 
-func (u *ProductUseCase) GetProducts(ctx context.Context, params map[string][]string) ([]entity.Product, error) {
+func (u *ProductUseCase) FindProducts(ctx context.Context, params map[string][]string) ([]entity.Product, error) {
 	whereClauses, orderClauses := helper.QueryParamsToSqlClauses(params)
 	products, err := u.repo.FindProducts(ctx, whereClauses, orderClauses)
-
-	switch {
-	case err != nil:
+	if err != nil {
 		return nil, err
-	case len(products) == 0:
-		return nil, sql.ErrNoRows
-	}
-
-	g, ctx := errgroup.WithContext(ctx)
-	for i := range products {
-		i := i
-		g.Go(func() error {
-			imageUrl, err := thirdparty.GetImageUrl(ctx, products[i].Image)
-
-			if err != nil {
-				return err
-			}
-
-			products[i].Image = imageUrl
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return nil, thirdparty.ErrServiceUnavailable
 	}
 
 	return products, nil
@@ -58,9 +34,6 @@ func (u *ProductUseCase) GetProduct(ctx context.Context, productID int) (*entity
 	if err != nil {
 		return nil, err
 	}
-
-	imageUrl, _ := thirdparty.GetImageUrl(ctx, product.Image)
-	product.Image = imageUrl
 
 	return product, nil
 }
@@ -120,34 +93,10 @@ func (u *ProductUseCase) DeleteProduct(ctx context.Context, id int) error {
 	return nil
 }
 
-func (u *ProductUseCase) GetToppings(ctx context.Context) ([]entity.ProductTopping, error) {
+func (u *ProductUseCase) FindToppings(ctx context.Context) ([]entity.ProductTopping, error) {
 	toppings, err := u.repo.FindToppings(ctx)
-
-	switch {
-	case err != nil:
+	if err != nil {
 		return nil, err
-	case len(toppings) == 0:
-		return nil, sql.ErrNoRows
-	}
-
-	g, ctx := errgroup.WithContext(ctx)
-
-	for i := range toppings {
-		i := i
-		g.Go(func() error {
-			imageUrl, err := thirdparty.GetImageUrl(ctx, toppings[i].Image)
-			if err != nil {
-				return err
-			}
-
-			toppings[i].Image = imageUrl
-
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return nil, thirdparty.ErrServiceUnavailable
 	}
 
 	return toppings, nil

@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/rs/cors"
+	"github.com/yosepalexsander/waysbucks-api/config"
 	"github.com/yosepalexsander/waysbucks-api/db"
 	"github.com/yosepalexsander/waysbucks-api/interactor"
 	"github.com/yosepalexsander/waysbucks-api/router"
@@ -43,7 +44,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	router.NewRouter(r, appHandler)
 
-	port := os.Getenv("PORT")
+	port := config.PORT
 	if port == "" {
 		port = "8080" // Default port if not specified
 	}

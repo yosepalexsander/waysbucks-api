@@ -32,9 +32,6 @@ func (u *UserUseCase) GetProfile(ctx context.Context, id string) (*entity.User, 
 		return nil, err
 	}
 
-	imageUrl, _ := thirdparty.GetImageUrl(ctx, user.Image)
-	user.Image = imageUrl
-
 	return user, nil
 }
 

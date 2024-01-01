@@ -1,10 +1,10 @@
 package helper
 
 import (
-	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/yosepalexsander/waysbucks-api/config"
 )
 
 type MyClaims struct {
@@ -23,7 +23,7 @@ func GenerateToken(id string, isAdmin bool) (string, error) {
 		},
 	})
 
-	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
+	secretKey := []byte(config.JWT_SECRET)
 	tokenString, tokenErr := token.SignedString(secretKey)
 	if tokenErr != nil {
 		return "", tokenErr
@@ -34,7 +34,7 @@ func GenerateToken(id string, isAdmin bool) (string, error) {
 
 func VerifyToken(tokenString string) (*jwt.Token, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &MyClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("JWT_SECRET_KEY")), nil
+		return []byte(config.JWT_SECRET), nil
 	})
 	if err != nil {
 		return nil, err

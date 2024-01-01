@@ -2,6 +2,7 @@ package persistance
 
 import (
 	"context"
+	dbSql "database/sql"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -21,11 +22,18 @@ func NewCartRepository(db *sqlx.DB) repository.CartRepository {
 func (storage *cartRepo) FindCarts(ctx context.Context, userID string) ([]entity.Cart, error) {
 	sql, _, _ := sq.Select("id", "product_id", "topping_id", "price", "qty").From("carts").Where("user_id=$1").OrderByClause("id DESC").ToSql()
 	productSql, _, _ := sq.Select("id", "name", "image", "price").From("products").Where("id=$1").ToSql()
-	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id= $1").ToSql()
+	toppingSql, _, _ := sq.Select("id", "name").From("toppings").Where("id IN $1").ToSql()
 
 	carts := []entity.Cart{}
 
 	rows, err := storage.db.QueryxContext(ctx, sql, userID)
+	if err != nil {
+		if err == dbSql.ErrNoRows {
+			return carts, nil
+		}
+
+		return nil, err
+	}
 
 	for rows.Next() {
 		var cart entity.Cart
@@ -35,21 +43,26 @@ func (storage *cartRepo) FindCarts(ctx context.Context, userID string) ([]entity
 		if len(cart.ToppingIds) < 1 {
 			cart.Topping = make([]entity.CartTopping, 0)
 		} else {
-			for _, v := range cart.ToppingIds {
+			rows, err := storage.db.QueryxContext(ctx, toppingSql, pq.Array(cart.ToppingIds))
+			if err != nil {
+				return nil, err
+			}
+
+			for rows.Next() {
 				var topping entity.CartTopping
-				toppingErr := storage.db.QueryRowxContext(ctx, toppingSql, v).StructScan(&topping)
-				if toppingErr != nil {
-					err = toppingErr
+
+				err = rows.StructScan(&topping)
+				if err != nil {
+					return nil, err
 				}
+
 				cart.Topping = append(cart.Topping, topping)
 			}
 		}
 
 		carts = append(carts, cart)
 	}
-	if err != nil {
-		return nil, err
-	}
+
 	return carts, nil
 }
 

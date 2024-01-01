@@ -16,7 +16,7 @@ func NewAddressUseCase(repo repository.AddressRepository) AddressUseCase {
 	return AddressUseCase{repo}
 }
 
-func (u *AddressUseCase) GetUserAddresses(ctx context.Context, userID string) ([]entity.Address, error) {
+func (u *AddressUseCase) FindUserAddresses(ctx context.Context, userID string) ([]entity.Address, error) {
 	return u.repo.FindAllUserAddresses(ctx, userID)
 }
 

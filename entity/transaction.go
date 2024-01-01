@@ -18,12 +18,12 @@ type Transaction struct {
 }
 
 type Order struct {
-	Id             int     `db:"id" json:"id"`
-	Price          int     `db:"price" json:"price"`
-	Qty            int     `db:"qty" json:"qty"`
-	ProductId      int     `db:"product_id" json:"product_id,omitempty"`
-	Topping_Ids    []int64 `db:"topping_id" json:"topping_id,omitempty"`
-	Transaction_Id string  `db:"transaction_id" json:"-"`
+	Id            int     `db:"id" json:"id"`
+	Price         int     `db:"price" json:"price"`
+	Qty           int     `db:"qty" json:"qty"`
+	ProductId     int     `db:"product_id" json:"product_id,omitempty"`
+	ToppingIds    []int64 `db:"topping_id" json:"topping_id,omitempty"`
+	TransactionId string  `db:"transaction_id" json:"-"`
 	OrderProduct
 	Toppings []OrderTopping `json:"toppings"`
 }
@@ -44,10 +44,10 @@ type OrderTopping struct {
 }
 
 type OrderRequest struct {
-	Qty         int     `json:"qty" validate:"required"`
-	Price       int     `json:"price" validate:"required"`
-	ProductId   int     `json:"product_id" validate:"required"`
-	Topping_Ids []int64 `json:"topping_id"`
+	Qty        int     `json:"qty" validate:"required"`
+	Price      int     `json:"price" validate:"required"`
+	ProductId  int     `json:"product_id" validate:"required"`
+	ToppingIds []int64 `json:"topping_id"`
 }
 
 type TransactionRequest struct {
@@ -91,9 +91,9 @@ func NewTransaction(r TransactionRequest) TransactionTxParams {
 
 func newOrder(r OrderRequest) Order {
 	return Order{
-		ProductId:   r.ProductId,
-		Qty:         r.Qty,
-		Price:       r.Price,
-		Topping_Ids: r.Topping_Ids,
+		ProductId:  r.ProductId,
+		Qty:        r.Qty,
+		Price:      r.Price,
+		ToppingIds: r.ToppingIds,
 	}
 }

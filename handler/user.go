@@ -5,14 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/yosepalexsander/waysbucks-api/config"
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/helper"
 	"github.com/yosepalexsander/waysbucks-api/middleware"
-	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"github.com/yosepalexsander/waysbucks-api/usecase"
 	"google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
@@ -65,11 +64,6 @@ func (s *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 			}
 
 			internalServerError(w)
-			return
-		}
-
-		if user.Image, err = thirdparty.GetImageUrl(ctx, user.Image); err != nil {
-			serviceUnavailable(w, "error: cloudinary service unavailable")
 			return
 		}
 
@@ -267,9 +261,7 @@ func (s *UserHandler) LoginOrRegisterWithGoogle(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	clientId := os.Getenv("GOOGLE_CLIENT_ID")
-
-	if userInfo.Aud != clientId {
+	if userInfo.Aud != config.GOOGLE_CLIENT_ID {
 		badRequest(w, "Google client is not valid")
 		return
 	}

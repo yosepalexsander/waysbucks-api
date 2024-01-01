@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -10,7 +9,6 @@ import (
 	"github.com/yosepalexsander/waysbucks-api/entity"
 	"github.com/yosepalexsander/waysbucks-api/helper"
 	"github.com/yosepalexsander/waysbucks-api/middleware"
-	"github.com/yosepalexsander/waysbucks-api/thirdparty"
 	"github.com/yosepalexsander/waysbucks-api/usecase"
 )
 
@@ -22,7 +20,7 @@ func NewCartHandler(u usecase.CartUseCase) CartHandler {
 	return CartHandler{u}
 }
 
-func (s *CartHandler) GetCarts(w http.ResponseWriter, r *http.Request) {
+func (s *CartHandler) FindCarts(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
 		Payload []entity.Cart `json:"payload"`
@@ -36,16 +34,9 @@ func (s *CartHandler) GetCarts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	carts, err := s.CartUseCase.GetCarts(ctx, claims.UserID)
+	carts, err := s.CartUseCase.FindCarts(ctx, claims.UserID)
 	if err != nil {
-		switch err {
-		case thirdparty.ErrServiceUnavailable:
-			serviceUnavailable(w, "error: cloudinary service unavailable")
-		case sql.ErrNoRows:
-			notFound(w)
-		default:
-			internalServerError(w)
-		}
+		internalServerError(w)
 		return
 	}
 

@@ -5,13 +5,13 @@ import (
 	"errors"
 	"log"
 	"mime/multipart"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/cloudinary/cloudinary-go"
 	"github.com/cloudinary/cloudinary-go/api/admin"
 	"github.com/cloudinary/cloudinary-go/api/uploader"
+	"github.com/yosepalexsander/waysbucks-api/config"
 	"github.com/yosepalexsander/waysbucks-api/helper"
 )
 
@@ -20,7 +20,7 @@ var (
 )
 
 func UploadFile(ctx context.Context, file multipart.File, filename string, folder string) (string, string, error) {
-	cld, err := cloudinary.NewFromURL(os.Getenv("CLOUDINARY_URL"))
+	cld, err := cloudinary.NewFromURL(config.CLOUDINARY_URL)
 	if err != nil {
 		log.Printf("Failed to intialize Cloudinary\nerror: %v", err)
 		return "", "", ErrServiceUnavailable
@@ -44,7 +44,7 @@ func UploadFile(ctx context.Context, file multipart.File, filename string, folde
 }
 
 func GetImageUrl(ctx context.Context, publicID string) (string, error) {
-	cld, err := cloudinary.NewFromURL(os.Getenv("CLOUDINARY_URL"))
+	cld, err := cloudinary.NewFromURL(config.CLOUDINARY_URL)
 	if err != nil {
 		log.Printf("Failed to intialize Cloudinary, %v", err)
 		return "", ErrServiceUnavailable
@@ -60,7 +60,7 @@ func GetImageUrl(ctx context.Context, publicID string) (string, error) {
 }
 
 func RemoveFile(ctx context.Context, publicID string) error {
-	cld, err := cloudinary.NewFromURL(os.Getenv("CLOUDINARY_URL"))
+	cld, err := cloudinary.NewFromURL(config.CLOUDINARY_URL)
 	if err != nil {
 		log.Printf("Failed to intialize Cloudinary, %v", err)
 		return ErrServiceUnavailable

@@ -21,24 +21,17 @@ func NewProductHandler(u usecase.ProductUseCase) ProductHandler {
 	return ProductHandler{u}
 }
 
-func (s *ProductHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
+func (s *ProductHandler) FindProducts(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
 		Payload []entity.Product `json:"payload"`
 	}
 
 	queries := r.URL.Query()
-	products, err := s.ProductUseCase.GetProducts(r.Context(), queries)
+	products, err := s.ProductUseCase.FindProducts(r.Context(), queries)
 
 	if err != nil {
-		switch err {
-		case thirdparty.ErrServiceUnavailable:
-			serviceUnavailable(w, "error: cloudinary service unavailable")
-		case sql.ErrNoRows:
-			notFound(w)
-		default:
-			internalServerError(w)
-		}
+		internalServerError(w)
 		return
 	}
 
@@ -64,10 +57,6 @@ func (s *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 
 	product, err := s.ProductUseCase.GetProduct(ctx, productID)
 	if err != nil {
-		if err == thirdparty.ErrServiceUnavailable {
-			serviceUnavailable(w, "error: cloudinary service unavailable")
-			return
-		}
 		if err == sql.ErrNoRows {
 			notFound(w)
 			return
@@ -153,19 +142,17 @@ func (s *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	responseOK(w, resBody)
 }
 
-func (s *ProductHandler) GetToppings(w http.ResponseWriter, r *http.Request) {
+func (s *ProductHandler) FindToppings(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		commonResponse
 		Payload []entity.ProductTopping `json:"payload"`
 	}
 
-	toppings, err := s.ProductUseCase.GetToppings(r.Context())
+	toppings, err := s.ProductUseCase.FindToppings(r.Context())
 	if err != nil {
 		switch err {
 		case thirdparty.ErrServiceUnavailable:
 			serviceUnavailable(w, "error: cloudinary service unavailable")
-		case sql.ErrNoRows:
-			notFound(w)
 		default:
 			internalServerError(w)
 		}
